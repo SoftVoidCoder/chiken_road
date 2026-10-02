@@ -35,7 +35,7 @@
   CC.in = { held: { dir: null, dc: 0, dr: 0 }, stack: [], touch: null };
   // отсеки, которые наполняются позже (нужны для ссылок «вперёд»)
   CC.world = {}; CC.fx = {}; CC.game = {}; CC.draw = {}; CC.decor = {};
-  CC.actors = {}; CC.render = {}; CC.input = {}; CC.ui = {}; CC.audio = {};
+  CC.actors = {}; CC.render = {}; CC.input = {}; CC.ui = {}; CC.audio = {}; CC.mech = {};
 
   /* ==========================================================================
      1. КОНСТАНТЫ

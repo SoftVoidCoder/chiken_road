@@ -13,7 +13,7 @@
   var C = CC.C, R = CC.R, U = CC.util, G = CC.G, pl = CC.pl, IN = CC.in;
   var TS = C.TS, COLS = C.COLS, FIELD_HALF = C.FIELD_HALF;
   var colX = U.colX, rowY = U.rowY, hash01 = U.hash01, clamp = U.clamp;
-  var D = CC.draw, A = CC.actors, TH = CC.themes;
+  var D = CC.draw, A = CC.actors, TH = CC.themes, MECH = CC.mech;
 
   /* --- кэши кадра ----------------------------------------------------------
      Покрытие ряда (земля, дорога) не меняется, пока ряд жив: рисуем его один
@@ -61,6 +61,8 @@
       var row = G.rows[r];
       if (!row) { continue; }
       var y = rowY(r);
+      // прилив: ряды позади игрока постепенно уходят под воду
+      var flooded = MECH && row.type === 'grass' && MECH.state().tide > 0 && row.r < G.maxRow - MECH.state().tide;
       if (row.type === 'grass') { rowCover('grass', row, y, D.drawGrass); }
       else if (row.type === 'road') { rowCover('road', row, y, D.drawRoad); }
       else if (row.type === 'water') { D.drawWater(row, y); }
@@ -80,11 +82,17 @@
         for (var k2 = 0; k2 < row.coins.length; k2++) {
           D.drawCoin(colX(row.coins[k2]), y - 3 + Math.sin(G.t * 3 + row.coins[k2]) * 1.5, row.coins[k2]);
         }
+        if (flooded) { D.drawFlood(y, 1); }
+        if (row.holes) { for (var hp in row.holes) { D.drawPit(colX(+hp), y); } }
       } else if (row.type === 'road') {
         for (var i2 = 0; i2 < row.items.length; i2++) {
           var it2 = row.items[i2];
           if (it2.x > -FIELD_HALF - TS * 4 && it2.x < FIELD_HALF + TS * 4) {
+            // высокая трава соседнего ряда прячет машины
+            var hiddenBelow = G.rows[r - 1] && G.rows[r - 1].tall;
+            if (hiddenBelow) { R.ctx.globalAlpha = 0.45; }
             A.drawVehicleCached(it2.x, y, it2.kind, it2.vx > 0 ? 1 : -1, it2.color, it2.ph);
+            if (hiddenBelow) { R.ctx.globalAlpha = 1; }
           }
         }
       } else if (row.type === 'water') {
@@ -94,10 +102,15 @@
             D.drawLog(it3.x, y, it3.len, it3.kind);
           }
         }
+      } else if (row.type === 'road') {
+        if (G.rows[r - 1] && G.rows[r - 1].tall) { D.drawTallFringe(y + TS / 2 - 2); }
       } else if (row.type === 'rail' && row.train) {
         D.drawTrain(row.train.x, y, row.dir);
       }
     }
+
+    // явления механик биома: лазеры, краны, карусели, тени метеоров
+    if (MECH) { MECH.drawWorld(); }
 
     // затемнение за границами поля
     var edge = R.ctx.createLinearGradient(-FIELD_HALF - TS * 2, 0, -FIELD_HALF, 0);
@@ -159,6 +172,9 @@
     }
     // виньетка
     drawVignette();
+
+    // погода и ограничение обзора — уже в экранных координатах
+    if (MECH) { MECH.drawScreen(); }
   }
 
   U.expose(CC.render, { frame: render });

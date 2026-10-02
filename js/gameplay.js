@@ -18,7 +18,7 @@
   var profile = U.profile, saveProfile = U.saveProfile;
   var playerCol = U.playerCol, playerRow = U.playerRow, camTargetFor = U.camTargetFor;
   var Pl = CC.platform, Sound = CC.audio;
-  var W = CC.world, UI = CC.ui, META = CC.meta, held = IN.held;
+  var W = CC.world, UI = CC.ui, META = CC.meta, held = IN.held, MECH = CC.mech;
   /* ==========================================================================
      4. ЧАСТИЦЫ
      ========================================================================== */
@@ -66,6 +66,8 @@
     G.eagle = null; G.reviveUsed = false; G.hintShown = false;
     G.boostsUsed = 0; G.noStopBest = 0; G.ghostBeaten = false;
     G.ghostTrack = []; G.ghostNext = 0;
+    if (MECH) { MECH.reset(); }
+    G.slide = null; G.wind = null; G.tunnel = null; G.tunnelLock = false; G.mudSlow = 0;
     pl.px = colX((COLS - 1) / 2); pl.py = rowY(0);
     pl.hop = null; pl.log = null; pl.facing = 'up';
     pl.idle = 0; pl.alive = true; pl.holdTimer = 0;
@@ -126,11 +128,17 @@
 
     if (obj && obj.type === 'water') {
       var lg = logUnder(obj, pl.px);
+      if (lg && lg.kind === 'croc') {
+        // крокодил не спасает, а съедает
+        die(obj.lava ? 'lava' : 'water');
+        return;
+      }
       if (lg) {
         pl.log = lg;
-        burst(pl.px, pl.py + TS * 0.2, 5, 'rgba(150,220,255,0.9)', 'dot', 70);
+        burst(pl.px, pl.py + TS * 0.2, 5,
+          obj.lava ? 'rgba(255,180,90,0.9)' : 'rgba(150,220,255,0.9)', 'dot', 70);
       } else {
-        die('water');
+        die(obj.lava ? 'lava' : 'water');
         return;
       }
     } else {
@@ -147,6 +155,8 @@
       Sound.coin();
       UI.syncHUD();
     }
+
+    if (MECH) { MECH.onLand(obj, obj); }
 
     if (row > G.maxRow) {
       G.maxRow = row;
@@ -180,7 +190,10 @@
       }
     } else if (obj.type === 'rail' && obj.train) {
       var tr = obj.train;
-      if (Math.abs(pl.px - tr.x) < tr.len * TS * 0.5 + phw * 0.6) { die('train'); return; }
+      if (Math.abs(pl.px - tr.x) < tr.len * TS * 0.5 + phw * 0.6) {
+        die(obj.plane ? 'plane' : 'train');
+        return;
+      }
     }
   }
 
@@ -268,7 +281,7 @@
       if (!pl.hop && held.dir && pl.holdTimer <= 0) { tryMove(held.dc, held.dr); }
 
       if (pl.hop) {
-        pl.hop.t += dt / HOP_TIME;
+        pl.hop.t += dt / (HOP_TIME * (MECH ? MECH.hopMul() : 1));
         var e = Math.min(1, pl.hop.t);
         pl.px = pl.hop.fx + (pl.hop.tx - pl.hop.fx) * e;
         pl.py = pl.hop.fy + (pl.hop.ty - pl.hop.fy) * e;
@@ -283,6 +296,33 @@
         var obj = G.rows[playerRow()];
         if (obj && obj.type === 'water') { die('water'); }
       }
+
+      if (G.mudSlow > 0) { G.mudSlow -= dt; }
+      // лёд: после приземления курицу проносит ещё на клетку
+      if (pl.alive && !pl.hop && G.slide) {
+        var sl = G.slide;
+        G.slide = null;
+        tryMove(sl.dc, sl.dr);
+      }
+      // ветер: через мгновение сносит в сторону
+      if (G.wind) {
+        G.wind.left -= dt;
+        if (G.wind.left <= 0) {
+          var wdc = G.wind.dc;
+          G.wind = null;
+          if (pl.alive && !pl.hop) { tryMove(wdc, 0); }
+        }
+      }
+      // тоннель: переносит вперёд на несколько рядов
+      if (G.tunnel) {
+        G.tunnel.left -= dt;
+        if (G.tunnel.left <= 0) {
+          var steps = G.tunnel.rows;
+          G.tunnel = null;
+          tunnelJump(steps);
+        }
+      }
+      if (MECH) { MECH.tick(dt); }
 
       if (pl.alive && !pl.hop && pl.log === null) { pl.idle += dt; }
       if (pl.alive && G.invuln <= 0) { checkHits(); }
@@ -346,6 +386,28 @@
         Pl.showFullscreen(function () { if (G.state === 'over') { UI.showOnly('ovOver'); } });
       }, 600);
     }
+  }
+
+  // Тоннель: переносит курицу вперёд, награждая пройденные ряды
+  function tunnelJump(steps) {
+    W.ensureRows(playerRow() + steps + 6);
+    var row = findSafeRow(playerRow() + steps);
+    var col = freeCol(row, playerCol());
+    pl.px = colX(col); pl.py = rowY(row);
+    pl.hop = null; pl.log = null;
+    burst(pl.px, pl.py, 16, '#8fd3ff', 'sparkle', 130);
+    Sound.land();
+    if (row > G.maxRow) {
+      G.maxRow = row;
+      G.score = Math.max(0, row);
+      syncHUD();
+    }
+    camTargetYFix();
+  }
+
+  // После телепорта камеру нужно догнать мгновенно, иначе экран «уезжает»
+  function camTargetYFix() {
+    R.camY = R.camTargetY = camTargetFor(pl.py);
   }
 
   function findSafeRow(from) {

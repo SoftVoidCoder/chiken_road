@@ -235,6 +235,42 @@
   /* --- брёвна и лилии ------------------------------------------------------- */
   function drawLog(x, y, len, kind) {
     var w = len * TS;
+    // Камень в лаве: плоская плита, на ней можно стоять
+    if (kind === 'stone') {
+      R.ctx.fillStyle = 'rgba(0,0,0,0.25)';
+      R.ctx.beginPath(); R.ctx.ellipse(x, y + 5, w * 0.5, 8, 0, 0, 6.2832); R.ctx.fill();
+      R.ctx.fillStyle = '#5d5148';
+      R.ctx.beginPath();
+      rr(x - w / 2, y - 11, w, 22, 6); R.ctx.fill();
+      R.ctx.fillStyle = '#7d6d61';
+      rr(x - w / 2 + 2, y - 9, w - 4, 16, 5); R.ctx.fill();
+      R.ctx.fillStyle = 'rgba(255,255,255,0.18)';
+      rr(x - w / 2 + 3, y - 8, w * 0.4, 4, 2); R.ctx.fill();
+      if (R.fine) {
+        R.ctx.strokeStyle = 'rgba(40,32,26,0.5)'; R.ctx.lineWidth = 1.2;
+        R.ctx.beginPath(); R.ctx.moveTo(x - w * 0.2, y - 6); R.ctx.lineTo(x - w * 0.1, y + 6); R.ctx.stroke();
+        R.ctx.beginPath(); R.ctx.moveTo(x + w * 0.15, y - 7); R.ctx.lineTo(x + w * 0.25, y + 5); R.ctx.stroke();
+      }
+      return;
+    }
+    // Крокодил: зубастая спина вместо бревна
+    if (kind === 'croc') {
+      R.ctx.fillStyle = 'rgba(0,0,0,0.28)';
+      R.ctx.beginPath(); R.ctx.ellipse(x, y + 6, w * 0.5, 8, 0, 0, 6.2832); R.ctx.fill();
+      R.ctx.fillStyle = '#3f6b3a';
+      rr(x - w / 2, y - 9, w, 18, 8); R.ctx.fill();
+      R.ctx.fillStyle = '#4f8248';
+      rr(x - w / 2 + 2, y - 7, w - 4, 12, 6); R.ctx.fill();
+      for (var ci = 0; ci < 6; ci++) {
+        var sx = x - w / 2 + 6 + ci * (w - 12) / 5.5;
+        R.ctx.fillStyle = '#2f5230';
+        R.ctx.beginPath(); R.ctx.moveTo(sx - 3, y - 9); R.ctx.lineTo(sx, y - 2); R.ctx.lineTo(sx + 3, y - 9); R.ctx.closePath(); R.ctx.fill();
+      }
+      R.ctx.fillStyle = '#c9d96a';
+      R.ctx.beginPath(); R.ctx.arc(x + w / 2 - 6, y - 3, 1.8, 0, 6.2832); R.ctx.fill();
+      R.ctx.beginPath(); R.ctx.arc(x + w / 2 - 6, y + 3, 1.8, 0, 6.2832); R.ctx.fill();
+      return;
+    }
     if (kind === 'lily') {
       shadow(x, y + 5, w * 0.5, 7, 0.20);
       R.ctx.fillStyle = '#3f9c55';
@@ -264,6 +300,48 @@
     }
   }
 
+
+  // Прилив: затопленный ряд земли — вода поверх травы
+  function drawFlood(y, strength) {
+    var wc = theme().water;
+    R.ctx.globalAlpha = Math.min(1, 0.55 + 0.3 * strength);
+    R.ctx.fillStyle = wc[1];
+    R.ctx.fillRect(-FIELD_HALF, y - TS / 2, FIELD_HALF * 2, TS);
+    R.ctx.globalAlpha = 1;
+    R.ctx.strokeStyle = 'rgba(255,255,255,0.25)'; R.ctx.lineWidth = 1.6;
+    R.ctx.beginPath();
+    for (var x = -FIELD_HALF; x <= FIELD_HALF; x += 14) {
+      var dy = Math.sin((x * 0.05) + G.t * 2.4) * 2;
+      if (x === -FIELD_HALF) { R.ctx.moveTo(x, y + dy); } else { R.ctx.lineTo(x, y + dy); }
+    }
+    R.ctx.stroke();
+  }
+
+  // Высокая трава: закрывает нижнюю кромку ряда, пряча машины
+  function drawTallFringe(y, alpha) {
+    R.ctx.globalAlpha = alpha === undefined ? 1 : alpha;
+    for (var i = 0; i < 26; i++) {
+      var h = hash01(i * 71) * 12 + 8;
+      var bx = -FIELD_HALF + i * (FIELD_HALF * 2 / 26);
+      R.ctx.strokeStyle = i % 3 === 0 ? 'rgba(120,150,60,0.9)' : 'rgba(150,175,70,0.85)';
+      R.ctx.lineWidth = 3; R.ctx.lineCap = 'round';
+      R.ctx.beginPath();
+      R.ctx.moveTo(bx, y);
+      R.ctx.quadraticCurveTo(bx + Math.sin(G.t * 1.4 + i) * 3, y - h * 0.6, bx + Math.sin(G.t * 1.4 + i) * 5, y - h);
+      R.ctx.stroke();
+    }
+    R.ctx.globalAlpha = 1;
+  }
+
+  // Провал в земле (каньон): тёмная дыра, куда шагать нельзя
+  function drawPit(x, y) {
+    R.ctx.fillStyle = '#1b1d22';
+    R.ctx.beginPath(); R.ctx.ellipse(x, y, TS * 0.42, TS * 0.36, 0, 0, 6.2832); R.ctx.fill();
+    R.ctx.strokeStyle = 'rgba(120,110,95,0.6)'; R.ctx.lineWidth = 2;
+    R.ctx.beginPath(); R.ctx.ellipse(x, y, TS * 0.42, TS * 0.36, 0, 0, 6.2832); R.ctx.stroke();
+    R.ctx.fillStyle = 'rgba(0,0,0,0.5)';
+    R.ctx.beginPath(); R.ctx.ellipse(x, y + 2, TS * 0.30, TS * 0.24, 0, 0, 6.2832); R.ctx.fill();
+  }
 
   /* --- поезд ---------------------------------------------------------------- */
   function drawTrain(x, y, dir) {
@@ -376,6 +454,7 @@
     rr: rr, shadow: shadow, drawGrass: drawGrass, drawRoad: drawRoad,
     drawWater: drawWater, drawRail: drawRail, drawTree: drawTree, drawRock: drawRock,
     drawCoin: drawCoin, drawLog: drawLog, drawTrain: drawTrain, drawEagle: drawEagle,
-    drawVoid: drawVoid, drawDecor: drawDecor
+    drawVoid: drawVoid, drawDecor: drawDecor, drawFlood: drawFlood,
+    drawTallFringe: drawTallFringe, drawPit: drawPit
   });
 })(window.CC);

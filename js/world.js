@@ -15,7 +15,19 @@
   var KIND = C.KIND, CAR_COLORS = C.CAR_COLORS;
   var clamp = U.clamp, rnd = U.rnd, pick = U.pick, hash01 = U.hash01;
   var diff = U.diff, colX = U.colX, rowY = U.rowY;
-  var TH = CC.themes, A = CC.actors;
+  var TH = CC.themes, A = CC.actors, MECH = CC.mech;
+
+  // Пул машин биома: неизвестные движку id превращаются в обычную машину.
+  function themeCars() {
+    var th = TH.get(G.themeId);
+    var pool = th && th.cars && th.cars.length ? th.cars : null;
+    if (!pool) { return null; }
+    var out = [];
+    for (var i = 0; i < pool.length; i++) {
+      out.push(KIND[pool[i]] ? pool[i] : 'car');
+    }
+    return out.length ? out : null;
+  }
   /* ==========================================================================
      6. ГЕНЕРАЦИЯ МИРА
      ========================================================================== */
@@ -82,6 +94,8 @@
     var lane = makeLane(r, d, {
       speedT: (1.7 + Math.random() * 2.1 + d * 2.4) * diff().speed,
       kind: function () {
+        var pool = themeCars();
+        if (pool) { return pick(pool); }
         var q = Math.random();
         if (q < 0.30) { return 'car'; }
         if (q < 0.41) { return 'taxi'; }
@@ -152,6 +166,8 @@
       else if (G.pattern.kind === 'rail') { row = genRail(r, d); }
       else { row = genGrass(r, d, false); }
     }
+    // механики биома помечают ряд: лёд, тоннель, лазер, лава и так далее
+    if (MECH) { MECH.decorateRow(row, d); }
     G.rows[r] = row;
     G.genUntil = r;
   }

@@ -17,7 +17,8 @@ const MODULES = [
   'js/core.js', 'js/i18n.js', 'js/themes.js', 'js/skins.js', 'js/settings.js',
   'js/platform.js', 'js/meta.js', 'js/audio.js',
   'js/draw-world.js', 'js/draw-decor.js', 'js/draw-actors.js',
-  'js/world.js', 'js/gameplay.js', 'js/render.js', 'js/input.js', 'js/ui.js', 'js/main.js'
+  'js/world.js', 'js/mechanics.js', 'js/gameplay.js', 'js/render.js', 'js/input.js',
+  'js/ui.js', 'js/main.js'
 ];
 const sources = MODULES.map((f) => ({ file: f, code: fs.readFileSync(path.join(root, f), 'utf8') }));
 
@@ -504,6 +505,55 @@ function step(title, fn) {
     G.meta().stats.rows = savedRows;
     assert(G.themeUnlocked('meadow'), 'с прогревом открывается лужайка');
     G.setTheme('meadow');
+  });
+
+  step('механики биомов действительно включаются', () => {
+    releaseAll();
+    const saved = G.meta().stats.rows;
+    G.meta().stats.rows = 100000;   // открываем все карты для проверки
+    const probe = (id, fn) => {
+      G.setTheme(id);
+      G.start();
+      const rows = G.rows();
+      let found = 0;
+      for (const k of Object.keys(rows)) { if (fn(rows[k])) { found++; } }
+      return found;
+    };
+    assert(probe('winter', (r) => r.ice) > 0, 'зима: лёд не появился ни на одном ряду');
+    assert(probe('volcano', (r) => r.lava) > 0, 'вулкан: лава не появилась');
+    assert(probe('cyberpunk', (r) => r.laser) > 0, 'киберпанк: лазерные ворота не появились');
+    assert(probe('construction', (r) => r.crane) > 0, 'стройка: краны не появились');
+    assert(probe('subway', (r) => r.escalator) > 0, 'метро: эскалаторы не появились');
+    assert(probe('autumn', (r) => r.mud) > 0, 'осень: грязь не появилась');
+    assert(probe('canyon', (r) => r.holes) > 0, 'каньон: провалы не появились');
+    G.meta().stats.rows = saved;
+    G.setTheme('meadow');
+  });
+
+  step('все 25 биомов играются без ошибок', () => {
+    releaseAll();
+    const saved = G.meta().stats.rows;
+    G.meta().stats.rows = 100000;
+    const dirs = [[0, 1], [1, 0], [-1, 0], [0, -1]];
+    let biomes = 0, deaths = 0, bestRow = 0;
+    for (const id of G.themes()) {
+      assert(G.setTheme(id) === id, 'биом не переключился: ' + id);
+      G.start();
+      for (let i = 0; i < 400; i++) {
+        if (Math.random() < 0.22) {
+          const d = dirs[(Math.random() * dirs.length) | 0];
+          G.tryMove(d[0], d[1]);
+        }
+        tick(1);
+        if (G.G.state === 'over') { deaths++; G.start(); }
+        if (G.G.maxRow > bestRow) { bestRow = G.G.maxRow; }
+      }
+      assert(G.G.particles.length < 600, 'частицы не чистятся в биоме ' + id + ': ' + G.G.particles.length);
+      biomes++;
+    }
+    G.meta().stats.rows = saved;
+    G.setTheme('meadow');
+    console.log('       биомов: ' + biomes + ', смертей в прогоне: ' + deaths + ', лучший ряд: ' + bestRow);
   });
 
   step('мета-прогрессия: задания, достижения, сундук, сезон', () => {
