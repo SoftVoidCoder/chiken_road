@@ -419,6 +419,10 @@
     /* --- инициализация ---------------------------------------------------- */
     init: function () {
       if (P._booting) { return P._readyPromise; }
+      // A/B-разметка: частота межстраничной рекламы у части игроков мягче
+      try {
+        P.adCooldownMs = (P.ab('ad_cooldown', ['base', 'rare']) === 'rare') ? AD_COOLDOWN_MS * 1.6 : AD_COOLDOWN_MS;
+      } catch (e) { P.adCooldownMs = AD_COOLDOWN_MS; }
       P._booting = true;
       P.lang = navLang();
       P.debugAd = hasFlag('debug=1');

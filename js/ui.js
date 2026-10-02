@@ -301,7 +301,9 @@
         '" data-theme="' + t.id + '" type="button">' +
         '<span class="thc-icon">' + (open ? t.icon : '🔒') + '</span>' +
         '<span class="thc-name">' + Pl.t('th_' + t.id) + '</span>' +
-        '<span class="thc-tag">' + (open ? Pl.t('th_' + t.id + '_d') : Pl.t('unlockIn', { n: t.unlockRows - rows })) + '</span>' +
+        '<span class="thc-tag">' + (open
+          ? (META.biomeBest(t.id) > 0 ? Pl.t('best') + ': ' + META.biomeBest(t.id) : Pl.t('th_' + t.id + '_d'))
+          : Pl.t('unlockIn', { n: t.unlockRows - rows })) + '</span>' +
         '</button>';
     }
     box.innerHTML = html;

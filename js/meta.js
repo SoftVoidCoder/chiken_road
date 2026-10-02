@@ -143,7 +143,7 @@
         stats: {
           runs: 0, rows: 0, best: 0, bestHard: 0, coins: 0, deaths: 0, timeMs: 0,
           boosts: 0, ads: 0, comboBest: 0, streak: 0,
-          biomes: {}, modes: {}, reasons: {}, ghostBeaten: 0
+          biomes: {}, modes: {}, reasons: {}, ghostBeaten: 0, biomeBest: {}
         },
         ach: {},
         daily: { date: '', streak: 0, claimed: 0, quests: [] },
@@ -402,6 +402,10 @@
       if ((run.combo || 0) > (st.comboBest || 0)) { st.comboBest = run.combo || 0; }
       st.reasons[run.reason || 'unknown'] = (st.reasons[run.reason || 'unknown'] || 0) + 1;
       st.biomes[run.biome || 'meadow'] = (st.biomes[run.biome || 'meadow'] || 0) + 1;
+      // отдельный рекорд по каждой карте: у биомов разная сложность
+      if (!st.biomeBest) { st.biomeBest = {}; }
+      var bId = run.biome || 'meadow';
+      if ((run.rows || 0) > (st.biomeBest[bId] || 0)) { st.biomeBest[bId] = run.rows || 0; }
       st.modes[run.mode || 'classic'] = (st.modes[run.mode || 'classic'] || 0) + 1;
       if (run.ghostBeaten) { st.ghostBeaten = (st.ghostBeaten || 0) + 1; }
 
@@ -436,7 +440,8 @@
     onAd: function () { M.state.stats.ads++; },
     onDailyDone: function () { M.refreshQuests(); M.bump('daily', 1, M._ctx); },
 
-    stats: function () { return M.state.stats; }
+    stats: function () { return M.state.stats; },
+    biomeBest: function (id) { return (M.state.stats.biomeBest && M.state.stats.biomeBest[id]) || 0; }
   };
 
   CC.meta = M;

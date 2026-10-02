@@ -146,6 +146,13 @@
   }
 
   // Бусты: в меню их можно купить, в паузе — применить в текущем забеге
+  // A/B-эксперимент: половина игроков видит бусты на 20 % дешевле, половина —
+  // рекламу чуть реже. Вариант закрепляется за игроком навсегда и уходит в метрики.
+  function boostPrice(b) {
+    var bucket = Pl.ab('boost_price', ['base', 'cheap']);
+    return bucket === 'cheap' ? Math.round(b.price * 0.8) : b.price;
+  }
+
   function buildBoosts(targetId, shop) {
     var box = clearBox(targetId);
     if (!box) { return; }
@@ -159,7 +166,7 @@
         card.appendChild(node('span', 'bic', b.id === 'magnet' ? '🧲' : b.id === 'slow' ? '🐌' :
           b.id === 'shield' ? '🛡️' : b.id === 'double' ? '✖️2' : '🐤'));
         card.appendChild(node('span', 'bn', T(b.name)));
-        card.appendChild(node('span', 'bp', shop ? T('price_coins', { n: b.price }) : T('use')));
+        card.appendChild(node('span', 'bp', shop ? T('price_coins', { n: boostPrice(b) }) : T('use')));
         card.addEventListener('click', function () { boostAction(b, shop); });
         box.appendChild(card);
       })(list[i]);
@@ -169,8 +176,9 @@
   function boostAction(b, shop) {
     if (shop) {
       // покупка на будущее: монеты списываются, буст применяется сразу в забеге
-      if (G.totalCoins < b.price) { toast(T('notEnough')); return; }
-      if (!UI.spendCoins(b.price)) { return; }
+      var price = boostPrice(b);
+      if (G.totalCoins < price) { toast(T('notEnough')); return; }
+      if (!UI.spendCoins(price)) { return; }
       G.boostStock = G.boostStock || {};
       G.boostStock[b.id] = (G.boostStock[b.id] || 0) + 1;
       toast(T('bought'));
