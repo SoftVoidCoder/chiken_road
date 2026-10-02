@@ -12,8 +12,14 @@ import { fileURLToPath } from 'node:url';
 const root = fs.existsSync(path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'game.js'))
   ? path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')            // dev/ внутри репозитория игры
   : path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', 'crossy'); // dev/ рядом с папкой crossy
-const gameSrc = fs.readFileSync(path.join(root, 'game.js'), 'utf8');
-const platSrc = fs.readFileSync(path.join(root, 'platform.js'), 'utf8');
+// Модульная сборка: порядок тот же, что в index.html — от ядра к точке входа.
+const MODULES = [
+  'js/core.js', 'js/i18n.js', 'js/themes.js', 'js/skins.js', 'js/settings.js',
+  'js/platform.js', 'js/meta.js', 'js/audio.js',
+  'js/draw-world.js', 'js/draw-decor.js', 'js/draw-actors.js',
+  'js/world.js', 'js/gameplay.js', 'js/render.js', 'js/input.js', 'js/ui.js', 'js/main.js'
+];
+const sources = MODULES.map((f) => ({ file: f, code: fs.readFileSync(path.join(root, f), 'utf8') }));
 
 let now = 0;
 let rafQueue = [];
@@ -58,9 +64,13 @@ function makeEl(id) {
     removeEventListener() {},
     setAttribute() {}, getAttribute() { return null; },
     getContext() { return ctx; },
-    appendChild() {}, focus() {}, blur() {},
+    appendChild(node) { if (node && node.onerror) { setTimeout(() => node.onerror(), 0); } },
+    focus() {}, blur() {},
     querySelector() { return makeEl('sub'); }, querySelectorAll() { return []; },
-    _fire(t, e) { (ls[t] || []).forEach((f) => f(e || { preventDefault() {} })); }
+    _fire(t, e) { (ls[t] || []).forEach((f) => f(e || { preventDefault() {} })); },
+    // заглушка тега <script>: SDK в песочнице не грузится, поэтому сразу сигналим ошибку
+    set onerror(f) { this._onerror = f; }, get onerror() { return this._onerror; },
+    set onload(f) { this._onload = f; }, get onload() { return this._onload; }
   };
   return el;
 }
@@ -68,6 +78,7 @@ const documentStub = {
   hidden: false,
   title: '',
   body: makeEl('body'),
+  head: makeEl('head'),
   documentElement: makeEl('html'),
   addEventListener(t, f) { (listeners.document[t] = listeners.document[t] || []).push(f); },
   getElementById(id) { return (listeners.byId[id] = listeners.byId[id] || makeEl(id)); },
@@ -86,7 +97,7 @@ const windowStub = {
   addEventListener(t, f) { (listeners.window[t] = listeners.window[t] || []).push(f); },
   removeEventListener() {},
   matchMedia: () => ({ matches: false, addListener() {}, addEventListener() {} }),
-  location: { search: '' },
+  location: { search: '?ysdk=off&debug=1' },
   navigator: { language: 'ru-RU' },
   localStorage: localStorageStub,
   performance: { now: () => now },
@@ -149,8 +160,7 @@ function step(title, fn) {
 (async function run() {
   console.log('Crossy Chicken — прогон движка в песочнице\n');
 
-  vm.runInContext(platSrc, sandbox, { filename: 'platform.js' });
-  vm.runInContext(gameSrc, sandbox, { filename: 'game.js' });
+  for (const m of sources) { vm.runInContext(m.code, sandbox, { filename: m.file }); }
 
   const G = sandbox.window.__CHICKEN__;
   assert(!!G, 'движок не выставил __CHICKEN__');
@@ -474,6 +484,52 @@ function step(title, fn) {
     assert(G.G.state === 'menu', 'выход в меню не сработал: ' + G.G.state);
     assert(listeners.byId.ovMenu.classList.contains('on'), 'меню не показано после выхода');
     G.setDiff('normal');
+  });
+
+  step('экран карт: 25 биомов, открыты только первые', () => {
+    releaseAll();
+    G.toMenu();
+    const themes = G.themes();
+    assert(themes.length === 25, 'ожидалось 25 биомов, найдено ' + themes.length);
+    assert(G.theme() === 'meadow', 'стартовый биом не meadow: ' + G.theme());
+    // лестница открытия проверяется на чистом прогрессе: предыдущие шаги
+    // успели набегать ряды, поэтому обнуляем счётчик и возвращаем обратно
+    const savedRows = G.meta().stats.rows;
+    G.meta().stats.rows = 0;
+    assert(G.themeUnlocked('meadow') && G.themeUnlocked('winter'), 'первые две карты должны быть открыты сразу');
+    assert(!G.themeUnlocked('asia'), 'дальняя карта не должна быть открыта с нуля');
+    assert(G.setTheme('asia') !== 'asia', 'закрытую карту выбрать нельзя');
+    assert(G.setTheme('winter') === 'winter', 'открытая карта не выбралась');
+    assert(G.theme() === 'winter', 'биом не переключился');
+    G.meta().stats.rows = savedRows;
+    assert(G.themeUnlocked('meadow'), 'с прогревом открывается лужайка');
+    G.setTheme('meadow');
+  });
+
+  step('мета-прогрессия: задания, достижения, сундук, сезон', () => {
+    const q = G.quests();
+    assert(q.daily.length === 3, 'должно быть 3 задания дня, есть ' + q.daily.length);
+    assert(q.weekly.length === 2, 'должно быть 2 задания недели, есть ' + q.weekly.length);
+    assert(G.achievements().length >= 20, 'мало достижений: ' + G.achievements().length);
+    const lvl = G.levelInfo();
+    assert(lvl.level >= 1 && lvl.rank, 'нет уровня или ранга');
+    const chest = G.chest();
+    assert(chest.canClaim === true, 'сундук должен быть доступен в первый день');
+    const got = G.claimChest();
+    assert(got && got.coins > 0, 'сундук не выдал награду');
+    assert(G.chest().canClaim === false, 'сундук выдаётся дважды за день');
+    const pass = G.pass();
+    assert(pass.rows.length === 30, 'в сезоне должно быть 30 уровней');
+    // забег двигает задания и статистику
+    const before = G.meta().stats.runs;
+    releaseAll();
+    G.start();
+    key('ArrowUp');
+    tick(200);
+    key('ArrowUp', true);
+    G.die('car');
+    tick(90);
+    assert(G.meta().stats.runs > before, 'забег не засчитан в статистику: ' + G.meta().stats.runs);
   });
 
   step('экран скинов открывается из меню и из паузы', () => {
