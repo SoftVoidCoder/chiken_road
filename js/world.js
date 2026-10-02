@@ -11,7 +11,7 @@
   'use strict';
 
   var C = CC.C, R = CC.R, U = CC.util, G = CC.G, pl = CC.pl, IN = CC.in;
-  var TS = C.TS, COLS = C.COLS, FIELD_HALF = C.FIELD_HALF, ROWS_AHEAD = C.ROWS_AHEAD;
+  var TS = C.TS, ROWS_AHEAD = C.ROWS_AHEAD;
   var KIND = C.KIND, CAR_COLORS = C.CAR_COLORS;
   var clamp = U.clamp, rnd = U.rnd, pick = U.pick, hash01 = U.hash01;
   var diff = U.diff, colX = U.colX, rowY = U.rowY;
@@ -21,10 +21,14 @@
   function themeCars() {
     var th = TH.get(G.themeId);
     var pool = th && th.cars && th.cars.length ? th.cars : null;
-    if (!pool) { return null; }
-    var out = [];
-    for (var i = 0; i < pool.length; i++) {
-      out.push(KIND[pool[i]] ? pool[i] : 'car');
+    // Общий пул + машины биома: раньше пул биома заменял общий, и новые модели
+    // (пожарная, лимузин, болид, дрон) не попадали в поток вообще.
+    var out = CAR_POOL.slice();
+    if (pool) {
+      for (var i = 0; i < pool.length; i++) {
+        var id = KIND[pool[i]] ? pool[i] : 'car';
+        out.push(id, id);          // машины биома встречаются чаще остальных
+      }
     }
     return out.length ? out : null;
   }
@@ -38,7 +42,7 @@
     for (var i = a.length - 1; i > 0; i--) { var j = (wrnd() * (i + 1)) | 0; var t = a[i]; a[i] = a[j]; a[j] = t; }
     return a;
   }
-  function cols() { var a = []; for (var i = 0; i < COLS; i++) { a.push(i); } return a; }
+  function cols() { var a = []; for (var i = 0; i < C.COLS; i++) { a.push(i); } return a; }
 
   // лента объектов (машины или брёвна): равномерно по кольцу, кольцо шире поля
   function makeLane(row, d, opts) {
@@ -69,7 +73,7 @@
     }
     var vT = speedT * spMul;
     var gap = Math.max(opts.minGap, vT * opts.gapTime - d * opts.gapTighten);
-    var span = COLS + 9;
+    var span = C.COLS + 9;
     // страховка: ни одна из величин не должна оказаться NaN, иначе лента
     // молча останется пустой (именно так дороги когда-то были без машин)
     if (!isFinite(len) || len <= 0) { len = 1; }
@@ -97,7 +101,7 @@
   function genGrass(r, d, safe) {
     var row = { type: 'grass', r: r, obstacles: {}, coins: [] };
     if (!safe) {
-      var maxObs = Math.min(COLS - 2, Math.round((1 + d * 5 + wrnd() * 2) * diff().obs));
+      var maxObs = Math.min(C.COLS - 2, Math.round((1 + d * 5 + wrnd() * 2) * diff().obs));
       var order = shuffle(cols());
       for (var i = 0; i < maxObs; i++) {
         var c = order[i];
@@ -107,25 +111,30 @@
       if (wrnd() < 0.04) {
         row.gold = true;
         row.coins = [];
-        var g0 = (wrnd() * (COLS - 5)) | 0;
+        var g0 = (wrnd() * (C.COLS - 5)) | 0;
         for (var gi = 0; gi < 5; gi++) {
           if (!((g0 + gi) in row.obstacles)) { row.coins.push(g0 + gi); }
         }
       } else if (wrnd() < 0.22 * diff().coin) {
-        var c0 = (wrnd() * COLS) | 0;
+        var c0 = (wrnd() * C.COLS) | 0;
         var n = 1 + ((wrnd() * 3) | 0);
         for (var k = 0; k < n; k++) {
           var cc = c0 + k;
-          if (cc < COLS && !(cc in row.obstacles)) { row.coins.push(cc); }
+          if (cc < C.COLS && !(cc in row.obstacles)) { row.coins.push(cc); }
         }
       }
     }
     return row;
   }
 
-  // Обычный набор машин: используется, когда у биома нет своего пула
-  var CAR_POOL = ['car', 'car', 'taxi', 'van', 'bus', 'truck', 'police',
-    'sport', 'pickup', 'ambulance', 'tractor', 'moto'];
+  // Обычный набор машин: используется, когда у биома нет своего пула.
+  // Частые модели повторяются — так редкие (пожарная, лимузин, болид, дрон)
+  // остаются редкими, а обычные машины задают тон.
+  var CAR_POOL = [
+    'car', 'car', 'car', 'taxi', 'taxi', 'van', 'van', 'bus', 'truck', 'police',
+    'sport', 'sport', 'pickup', 'ambulance', 'moto', 'tractor',
+    'firetruck', 'limo', 'hearse', 'garbage', 'tow', 'f1', 'icecream', 'drone'
+  ];
 
   function genRoad(r, d) {
     var row = { type: 'road', r: r };
@@ -137,13 +146,14 @@
         var pool = themeCars() || CAR_POOL;
         var want = 3 + ((wrnd() * 2) | 0);          // 3..4 типа в полосе
         if (want > pool.length) { want = pool.length; }
-        var chosen = [];
-        var guard = 0;
-        while (chosen.length < want && guard++ < 40) {
-          var cand = pick(pool);
-          if (chosen.indexOf(cand) < 0) { chosen.push(cand); }
+        // перемешиваем копию пула и берём первые want — так типы гарантированно
+        // разные, а не «случайно совпали»
+        var copy = pool.slice();
+        for (var ci = copy.length - 1; ci > 0; ci--) {
+          var cj = (wrnd() * (ci + 1)) | 0;
+          var ct = copy[ci]; copy[ci] = copy[cj]; copy[cj] = ct;
         }
-        return chosen;
+        return copy.slice(0, want);
       },
       minGap: diff().minGap,
       // в экстриме поток плотнее, а мягкая подстройка чуть ослабляет его новичку
@@ -263,6 +273,18 @@
     G.rows[r] = row;
     G.genUntil = r;
   }
+  // После смены размеров окна число колонок меняется: ряды впереди нужно
+  // пересобрать, иначе препятствия останутся рассчитаны на старую ширину.
+  function regenAhead() {
+    if (!G.rows) { return; }
+    var from = CC.util.playerRow() + 2;
+    for (var k in G.rows) {
+      if (G.rows.hasOwnProperty(k) && +k >= from) { delete G.rows[k]; }
+    }
+    G.genUntil = from - 1;
+    ensureRows(CC.util.playerRow() + ROWS_AHEAD);
+  }
+
   function ensureRows(until) { while (G.genUntil < until) { genNextRow(); } }
   function pruneRows(minKeep) {
     for (var k in G.rows) { if (+k < minKeep) { delete G.rows[k]; } }
@@ -272,7 +294,7 @@
     ramp: ramp, shuffle: shuffle, cols: cols, makeLane: makeLane,
     genGrass: genGrass, genRoad: genRoad, genWater: genWater, genRail: genRail,
     nextPattern: nextPattern, genNextRow: genNextRow, ensureRows: ensureRows,
-    resetSeed: resetSeed,
+    resetSeed: resetSeed, regenAhead: regenAhead,
     pruneRows: pruneRows
   });
 })(window.CC);

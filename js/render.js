@@ -11,32 +11,9 @@
   'use strict';
 
   var C = CC.C, R = CC.R, U = CC.util, G = CC.G, pl = CC.pl, IN = CC.in;
-  var TS = C.TS, COLS = C.COLS, FIELD_HALF = C.FIELD_HALF;
+  var TS = C.TS;
   var colX = U.colX, rowY = U.rowY, hash01 = U.hash01, clamp = U.clamp;
   var D = CC.draw, A = CC.actors, TH = CC.themes, MECH = CC.mech, META = CC.meta;
-
-  // Рамка вокруг поля: закрывает пустоту по бокам, чтобы глаз не цеплялось
-  // за появление и исчезновение машин за краем дороги.
-  function drawFieldFrame() {
-    var left = R.VW / 2 - FIELD_HALF * R.scale;
-    var right = R.VW / 2 + FIELD_HALF * R.scale;
-    if (left <= 0 && right >= R.VW) { return; }
-    var th = TH.get(G.themeId);
-    R.ctx.setTransform(R.DPR, 0, 0, R.DPR, 0, 0);
-    R.ctx.fillStyle = '#04060a';
-    if (left > 0) { R.ctx.fillRect(0, 0, left, R.VH); }
-    if (right < R.VW) { R.ctx.fillRect(right, 0, R.VW - right, R.VH); }
-    // оттенок биома поверх тёмной основы — рамка выглядит частью карты
-    R.ctx.globalAlpha = 0.4;
-    R.ctx.fillStyle = th.sky[1];
-    if (left > 0) { R.ctx.fillRect(0, 0, left, R.VH); }
-    if (right < R.VW) { R.ctx.fillRect(right, 0, R.VW - right, R.VH); }
-    R.ctx.globalAlpha = 1;
-    // светлая кромка поля
-    R.ctx.fillStyle = 'rgba(255,255,255,0.10)';
-    if (left > 0) { R.ctx.fillRect(left - 2, 0, 2, R.VH); }
-    if (right < R.VW) { R.ctx.fillRect(right, 0, 2, R.VH); }
-  }
 
   /* --- кэши кадра ----------------------------------------------------------
      Покрытие ряда (земля, дорога) не меняется, пока ряд жив: рисуем его один
@@ -47,7 +24,7 @@
     var k = R.DPR * R.scale;
     var key = 'r|' + type + '|' + G.themeId + '|' + row.r + '|' + (R.fine ? 1 : 0);
     var s = U.rowSprite(key, k, function () { fn(row, 0); });
-    R.ctx.drawImage(s.cv, -FIELD_HALF, y - TS / 2, s.w, s.h);
+    R.ctx.drawImage(s.cv, -R.fieldHalf, y - TS / 2, s.w, s.h);
   }
 
   // Виньетка — статичная картинка на размер окна: радиальный градиент
@@ -80,12 +57,6 @@
     var top = R.camY - (R.VH / 2) / R.scale, bot = R.camY + (R.VH / 2) / R.scale;
     var rFrom = Math.floor(-(bot + TS) / TS), rTo = Math.ceil(-(top - TS) / TS);
 
-    // Мир целиком обрезается по границам поля. Так игрок не видит, как машины
-    // и брёвна появляются из пустоты за краем дороги: они «въезжают» из-за рамки.
-    R.ctx.save();
-    R.ctx.beginPath();
-    R.ctx.rect(-FIELD_HALF, top - TS * 2, FIELD_HALF * 2, (bot - top) + TS * 4);
-    R.ctx.clip();
 
     for (var r = rTo; r >= rFrom; r--) {
       var row = G.rows[r];
@@ -129,7 +100,7 @@
       } else if (row.type === 'road') {
         for (var i2 = 0; i2 < row.items.length; i2++) {
           var it2 = row.items[i2];
-          if (it2.x > -FIELD_HALF - TS * 4 && it2.x < FIELD_HALF + TS * 4) {
+          if (it2.x > -R.fieldHalf - TS * 4 && it2.x < R.fieldHalf + TS * 4) {
             // высокая трава соседнего ряда прячет машины
             var hiddenBelow = G.rows[r - 1] && G.rows[r - 1].tall;
             if (hiddenBelow) { R.ctx.globalAlpha = 0.45; }
@@ -140,7 +111,7 @@
       } else if (row.type === 'water') {
         for (var i3 = 0; i3 < row.items.length; i3++) {
           var it3 = row.items[i3];
-          if (it3.x > -FIELD_HALF - TS * 4 && it3.x < FIELD_HALF + TS * 4) {
+          if (it3.x > -R.fieldHalf - TS * 4 && it3.x < R.fieldHalf + TS * 4) {
             D.drawLog(it3.x, y, it3.len, it3.kind);
           }
         }
@@ -154,20 +125,8 @@
     // явления механик биома: лазеры, краны, карусели, тени метеоров
     if (MECH) { MECH.drawWorld(); }
 
-    R.ctx.restore();      // конец обрезки по полю
 
-    // Плотная рамка по бокам: вся сцена — только поле, ничего лишнего по краям
-    drawFieldFrame();
-
-    // затемнение за границами поля
-    var edge = R.ctx.createLinearGradient(-FIELD_HALF - TS * 2, 0, -FIELD_HALF, 0);
-    edge.addColorStop(0, 'rgba(6,10,16,0.85)'); edge.addColorStop(1, 'rgba(6,10,16,0)');
-    R.ctx.fillStyle = edge;
-    R.ctx.fillRect(-FIELD_HALF - TS * 3, R.camY - R.VH / R.scale, TS * 3, R.VH / R.scale * 2);
-    var edge2 = R.ctx.createLinearGradient(FIELD_HALF + TS * 2, 0, FIELD_HALF, 0);
-    edge2.addColorStop(0, 'rgba(6,10,16,0.85)'); edge2.addColorStop(1, 'rgba(6,10,16,0)');
-    R.ctx.fillStyle = edge2;
-    R.ctx.fillRect(FIELD_HALF, R.camY - R.VH / R.scale, TS * 3, R.VH / R.scale * 2);
+    // затемнение по краям поля убрано: поле занимает всю ширину экрана
 
     // орёл
     if (G.eagle && pl.alive) { D.drawEagle(G.eagle, G.t); }

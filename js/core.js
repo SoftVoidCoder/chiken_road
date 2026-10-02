@@ -27,6 +27,8 @@
   CC.R = {
     canvas: null, ctx: null,
     VW: 800, VH: 600, DPR: 1, scale: 1, fine: true,
+    fieldHalf: 312,     // полуширина игрового поля в мировых пикселях
+    worldHalf: 500,     // полуширина видимой области: поле + запас на края
     camX: 0, camY: 0, camTargetY: 0,
     shadows: true, vignette: true, rowCache: true, spritesOn: true, particlesMax: 260,
     quality: 2, fps: 60
@@ -150,14 +152,26 @@
     R.VH = canvas.clientHeight || window.innerHeight || 600;
     canvas.width = Math.round(R.VW * R.DPR);
     canvas.height = Math.round(R.VH * R.DPR);
-    // вперёд должно быть видно не меньше 13 рядов, иначе на быстрые машины не хватит реакции
-    R.scale = clamp(Math.min(R.VW / ((COLS + 1.4) * TS), R.VH / (13 * TS)), 0.42, 1.75);
+    // Сначала выбираем масштаб так, чтобы вперёд было видно 13 рядов — иначе на
+    // быстрые машины не хватит реакции. Затем по ширине экрана считаем, сколько
+    // колонок помещается: поле занимает всю ширину, и рамок по бокам нет.
+    var VISIBLE_ROWS = 13;
+    R.scale = clamp(Math.min(R.VH / (VISIBLE_ROWS * TS), R.VW / (9 * TS)), 0.34, 1.9);
+    var fitCols = Math.round(R.VW / (R.scale * TS));
+    var newCols = Math.round(clamp(fitCols, 9, 27));
+    if (newCols !== C.COLS) {
+      C.COLS = newCols;
+      R.fieldHalf = C.COLS * TS / 2;
+      if (CC.world && CC.world.regenAhead) { CC.world.regenAhead(); }
+    }
+    // поля отрисовки идут чуть шире экрана, чтобы ряды гарантированно закрывали края
+    R.worldHalf = R.VW / (2 * R.scale) + TS;
     R.fine = R.quality > 1 && R.scale > 0.62;  // мелкие штрихи — только на крупном масштабе
     R.camY = R.camTargetY = camTargetFor(pl.py);
     if (wasDpr !== R.DPR || true) { clearCaches(); }   // размер окна изменился — кэши недействительны
   }
   function camTargetFor(py) { return py - (PLAYER_SCREEN_Y - 0.5) * R.VH / R.scale; }
-  function colX(c) { return (c - (COLS - 1) / 2) * TS; }   // центр клетки по X
+  function colX(c) { return (c - (C.COLS - 1) / 2) * TS; }   // центр клетки по X
   function rowY(r) { return -r * TS; }                     // центр ряда по Y
 
   /* ==========================================================================
@@ -223,7 +237,7 @@
   }
   function saveProfile() { if (CC.platform) { CC.platform.save(profile()); } }
 
-  function playerCol() { return clamp(Math.round(pl.px / TS + (COLS - 1) / 2), 0, COLS - 1); }
+  function playerCol() { return clamp(Math.round(pl.px / TS + (C.COLS - 1) / 2), 0, C.COLS - 1); }
   function playerRow() { return Math.round(-pl.py / TS); }
 
   // Подмена контекста рисования: нужна, чтобы те же 2D-модели рисовать
@@ -286,7 +300,7 @@
   function rowSprite(key, k, draw) {
     var s = rowSprites[key];
     if (s) { return s; }
-    var w = FIELD_HALF * 2, h = TS;
+    var w = R.worldHalf * 2, h = TS;
     if (rowCount >= ROW_LIMIT) { rowSprites = {}; rowCount = 0; }
     var cv = document.createElement('canvas');
     cv.width = Math.max(1, Math.ceil(w * k));
@@ -355,6 +369,7 @@
      ========================================================================== */
   var C = CC.C;
   C.TS = TS; C.COLS = COLS; C.FIELD_HALF = FIELD_HALF;
+  R.fieldHalf = FIELD_HALF;
   C.HOP_TIME = HOP_TIME; C.HOP_HOLD = HOP_HOLD; C.EAGLE_DELAY = EAGLE_DELAY;
   C.MIN_ROW = MIN_ROW; C.ROWS_AHEAD = ROWS_AHEAD; C.PLAYER_SCREEN_Y = PLAYER_SCREEN_Y;
   C.DIFFS = DIFFS; C.DIFF_ORDER = DIFF_ORDER; C.KIND = KIND; C.CAR_COLORS = CAR_COLORS;

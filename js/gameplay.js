@@ -10,7 +10,7 @@
   'use strict';
 
   var C = CC.C, R = CC.R, U = CC.util, G = CC.G, pl = CC.pl, IN = CC.in;
-  var TS = C.TS, COLS = C.COLS, FIELD_HALF = C.FIELD_HALF, HOP_TIME = C.HOP_TIME;
+  var TS = C.TS, HOP_TIME = C.HOP_TIME;
   var HOP_HOLD = C.HOP_HOLD, EAGLE_DELAY = C.EAGLE_DELAY, MIN_ROW = C.MIN_ROW;
   var ROWS_AHEAD = C.ROWS_AHEAD, PLAYER_SCREEN_Y = C.PLAYER_SCREEN_Y;
   var clamp = U.clamp, rnd = U.rnd, pick = U.pick, colX = U.colX, rowY = U.rowY;
@@ -72,7 +72,7 @@
     G.tunnel = null; G.tunnelLock = false; G.mudSlow = 0;
     G.combo = 0; G.comboBest = 0; G.boost = null; G.boostLeft = 0; G.shield = 0; G.boostLabel = '';
     G.night = 0; G.lastDc = 0; G.lastDr = 0;
-    pl.px = colX((COLS - 1) / 2); pl.py = rowY(0);
+    pl.px = colX((C.COLS - 1) / 2); pl.py = rowY(0);
     pl.hop = null; pl.log = null; pl.facing = 'up';
     pl.idle = 0; pl.alive = true; pl.holdTimer = 0;
     W.ensureRows(ROWS_AHEAD);
@@ -101,7 +101,7 @@
     if (G.state !== 'playing' || !pl.alive || pl.hop) { return false; }
     var col = playerCol(), row = playerRow();
     var tc = col + dc, tr = row + dr;
-    if (tc < 0 || tc >= COLS) { return false; }
+    if (tc < 0 || tc >= C.COLS) { return false; }
     var backLimit = Math.max(MIN_ROW, G.maxRow - 12);
     if (tr < backLimit) { return false; }
     if (tr > G.genUntil - 2) { return false; }
@@ -194,7 +194,7 @@
     }
   }
 
-  function edgeOut() { return Math.abs(pl.px) > FIELD_HALF + TS * 0.35; }
+  function edgeOut() { return Math.abs(pl.px) > R.fieldHalf + TS * 0.35; }
 
   function checkHits() {
     var r = playerRow(), obj = G.rows[r];
@@ -277,7 +277,7 @@
       } else if (row.type === 'rail') {
         if (row.train) {
           row.train.x += row.trainSpeed * dt * row.dir;
-          var lim = (COLS / 2 + 8) * TS;
+          var lim = (C.COLS / 2 + 8) * TS;
           if (row.dir > 0 ? row.train.x > lim : row.train.x < -lim) {
             row.train = null;
             row.timer = Math.max(1.5, rnd(2.6, 5.6) - (row.d || 0) * 1.4);
@@ -285,7 +285,7 @@
         } else {
           row.timer -= dt;
           if (row.timer <= 0) {
-            row.train = { x: -row.dir * (COLS / 2 + 8) * TS, len: row.trainLen };
+            row.train = { x: -row.dir * (C.COLS / 2 + 8) * TS, len: row.trainLen };
             row.timer = Infinity;
             Sound.horn();
           }
@@ -503,9 +503,9 @@
   function freeCol(row, want) {
     var obj = G.rows[row];
     if (!obj || !obj.obstacles) { return want; }
-    for (var d = 0; d < COLS; d++) {
+    for (var d = 0; d < C.COLS; d++) {
       var a = want + d, b = want - d;
-      if (a < COLS && !(a in obj.obstacles)) { return a; }
+      if (a < C.COLS && !(a in obj.obstacles)) { return a; }
       if (b >= 0 && !(b in obj.obstacles)) { return b; }
     }
     return want;

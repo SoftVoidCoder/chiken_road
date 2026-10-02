@@ -11,7 +11,7 @@
   'use strict';
 
   var C = CC.C, R = CC.R, U = CC.util, G = CC.G, pl = CC.pl, IN = CC.in;
-  var TS = C.TS, COLS = C.COLS, FIELD_HALF = C.FIELD_HALF, EAGLE_DELAY = C.EAGLE_DELAY;
+  var TS = C.TS, EAGLE_DELAY = C.EAGLE_DELAY;
   var clamp = U.clamp, rnd = U.rnd, pick = U.pick, hash01 = U.hash01;
   var colX = U.colX, rowY = U.rowY;
   var DEC = CC.decor, TH = CC.themes;
@@ -46,7 +46,8 @@
   /* --- трава ---------------------------------------------------------------- */
   function drawGrass(row, y) {
     var i, x;
-    for (i = 0; i < COLS; i++) {
+    var c0 = -2, c1 = C.COLS + 1;      // с запасом на края экрана
+    for (i = c0; i <= c1; i++) {
       var tone = hash01(row.r * 71 + i * 13);
       x = colX(i);
       var tones = theme().grass;
@@ -55,7 +56,7 @@
     }
     // травинки и цветочки (мелочь не рисуем на мелком масштабе — экономия для телефонов)
     if (R.scale > 0.68) {
-      for (i = 0; i < COLS; i++) {
+      for (i = c0; i <= c1; i++) {
         var h1 = hash01(row.r * 977 + i * 31);
         var h2 = hash01(row.r * 313 + i * 7);
         x = colX(i) - TS / 2 + 6 + h1 * (TS - 12);
@@ -71,20 +72,20 @@
     }
     // тёмная кромка сверху — «толщина» блока
     R.ctx.fillStyle = theme().grassTop;
-    R.ctx.fillRect(-FIELD_HALF, y - TS / 2, TS * COLS, 3);
+    R.ctx.fillRect(-R.worldHalf, y - TS / 2, R.worldHalf * 2, 3);
   }
 
   /* --- дорога --------------------------------------------------------------- */
   function drawRoad(row, y) {
     var road = theme().road;
     R.ctx.fillStyle = road[0];
-    R.ctx.fillRect(-FIELD_HALF, y - TS / 2, FIELD_HALF * 2, TS);
+    R.ctx.fillRect(-R.worldHalf, y - TS / 2, R.worldHalf * 2, TS);
     R.ctx.fillStyle = road[1];
-    R.ctx.fillRect(-FIELD_HALF, y - TS / 2 + 1, FIELD_HALF * 2, 2);
-    R.ctx.fillRect(-FIELD_HALF, y + TS / 2 - 3, FIELD_HALF * 2, 2);
+    R.ctx.fillRect(-R.worldHalf, y - TS / 2 + 1, R.worldHalf * 2, 2);
+    R.ctx.fillRect(-R.worldHalf, y + TS / 2 - 3, R.worldHalf * 2, 2);
     // прерывистая разметка по центру ряда
     R.ctx.fillStyle = road[2];
-    for (var i = -COLS; i <= COLS; i++) {
+    for (var i = -C.COLS; i <= C.COLS; i++) {
       var x = colX(i) + ((G.t * 8) % (TS * 2)) * 0;
       R.ctx.fillRect(x - TS * 0.28, y - 1.5, TS * 0.56, 3);
     }
@@ -103,21 +104,21 @@
     R.ctx.save();
     R.ctx.translate(0, y);            // дальше рисуем ряд в своих координатах
     R.ctx.fillStyle = g;
-    R.ctx.fillRect(-FIELD_HALF, -TS / 2, FIELD_HALF * 2, TS);
+    R.ctx.fillRect(-R.worldHalf, -TS / 2, R.worldHalf * 2, TS);
     R.ctx.strokeStyle = 'rgba(255,255,255,0.20)'; R.ctx.lineWidth = 2;
     for (var w = 0; w < 3; w++) {
       R.ctx.beginPath();
       var yy = -TS * 0.28 + w * TS * 0.28;
-      for (var x = -FIELD_HALF; x <= FIELD_HALF; x += 12) {
+      for (var x = -R.worldHalf; x <= R.worldHalf; x += 12) {
         var dy = Math.sin((x * 0.06) + G.t * 2.2 + row.phase + w) * 2.2;
-        if (x === -FIELD_HALF) { R.ctx.moveTo(x, yy + dy); } else { R.ctx.lineTo(x, yy + dy); }
+        if (x === -R.worldHalf) { R.ctx.moveTo(x, yy + dy); } else { R.ctx.lineTo(x, yy + dy); }
       }
       R.ctx.stroke();
     }
     // пена у берега
     R.ctx.fillStyle = 'rgba(255,255,255,0.22)';
-    R.ctx.fillRect(-FIELD_HALF, -TS / 2, FIELD_HALF * 2, 2.5);
-    R.ctx.fillRect(-FIELD_HALF, TS / 2 - 2.5, FIELD_HALF * 2, 2.5);
+    R.ctx.fillRect(-R.worldHalf, -TS / 2, R.worldHalf * 2, 2.5);
+    R.ctx.fillRect(-R.worldHalf, TS / 2 - 2.5, R.worldHalf * 2, 2.5);
     R.ctx.restore();
   }
 
@@ -125,12 +126,12 @@
   function drawRail(row, y) {
     var rail = theme().rail;
     R.ctx.fillStyle = rail[0];
-    R.ctx.fillRect(-FIELD_HALF, y - TS / 2, FIELD_HALF * 2, TS);
+    R.ctx.fillRect(-R.worldHalf, y - TS / 2, R.worldHalf * 2, TS);
     // щебень
     if (R.scale > 0.72) {
-      for (var i = 0; i < COLS * 6; i++) {
+      for (var i = 0; i < (C.COLS + 3) * 6; i++) {
         var h = hash01(row.r * 61 + i * 41);
-        var hx = -FIELD_HALF + h * FIELD_HALF * 2;
+        var hx = -R.worldHalf + h * R.worldHalf * 2;
         var hy = y - TS / 2 + hash01(i * 17 + row.r) * TS;
         R.ctx.fillStyle = h < 0.5 ? 'rgba(255,255,255,0.14)' : 'rgba(0,0,0,0.12)';
         R.ctx.fillRect(hx, hy, 2.4, 2.4);
@@ -138,17 +139,17 @@
     }
     // шпалы
     R.ctx.fillStyle = rail[1];
-    for (var s = -COLS; s <= COLS; s++) {
+    for (var s = -2; s <= C.COLS + 1; s++) {
       R.ctx.fillRect(colX(s) - TS * 0.42, y - TS * 0.36, TS * 0.84, TS * 0.72);
     }
     // рельсы
     R.ctx.fillStyle = rail[2];
-    R.ctx.fillRect(-FIELD_HALF, y - TS * 0.20, FIELD_HALF * 2, 3.5);
-    R.ctx.fillRect(-FIELD_HALF, y + TS * 0.16, FIELD_HALF * 2, 3.5);
+    R.ctx.fillRect(-R.worldHalf, y - TS * 0.20, R.worldHalf * 2, 3.5);
+    R.ctx.fillRect(-R.worldHalf, y + TS * 0.16, R.worldHalf * 2, 3.5);
     // светофоры по краям
     var warn = (!row.train && row.timer < row.warn);
     var blink = Math.floor(G.t * 5) % 2 === 0;
-    [-FIELD_HALF - TS * 0.5, FIELD_HALF + TS * 0.5].forEach(function (px) {
+    [-R.worldHalf + TS * 0.3, R.worldHalf - TS * 0.3].forEach(function (px) {
       shadow(px, y + TS * 0.30, 9, 4, 0.25);
       R.ctx.fillStyle = '#5a6472';
       R.ctx.fillRect(px - 2.5, y - TS * 0.5, 5, TS * 0.85);
@@ -306,13 +307,13 @@
     var wc = theme().water;
     R.ctx.globalAlpha = Math.min(1, 0.55 + 0.3 * strength);
     R.ctx.fillStyle = wc[1];
-    R.ctx.fillRect(-FIELD_HALF, y - TS / 2, FIELD_HALF * 2, TS);
+    R.ctx.fillRect(-R.fieldHalf, y - TS / 2, R.fieldHalf * 2, TS);
     R.ctx.globalAlpha = 1;
     R.ctx.strokeStyle = 'rgba(255,255,255,0.25)'; R.ctx.lineWidth = 1.6;
     R.ctx.beginPath();
-    for (var x = -FIELD_HALF; x <= FIELD_HALF; x += 14) {
+    for (var x = -R.fieldHalf; x <= R.fieldHalf; x += 14) {
       var dy = Math.sin((x * 0.05) + G.t * 2.4) * 2;
-      if (x === -FIELD_HALF) { R.ctx.moveTo(x, y + dy); } else { R.ctx.lineTo(x, y + dy); }
+      if (x === -R.fieldHalf) { R.ctx.moveTo(x, y + dy); } else { R.ctx.lineTo(x, y + dy); }
     }
     R.ctx.stroke();
   }
@@ -322,7 +323,7 @@
     R.ctx.globalAlpha = alpha === undefined ? 1 : alpha;
     for (var i = 0; i < 26; i++) {
       var h = hash01(i * 71) * 12 + 8;
-      var bx = -FIELD_HALF + i * (FIELD_HALF * 2 / 26);
+      var bx = -R.fieldHalf + i * (R.fieldHalf * 2 / 26);
       R.ctx.strokeStyle = i % 3 === 0 ? 'rgba(120,150,60,0.9)' : 'rgba(150,175,70,0.85)';
       R.ctx.lineWidth = 3; R.ctx.lineCap = 'round';
       R.ctx.beginPath();

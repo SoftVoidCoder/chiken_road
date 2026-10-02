@@ -655,63 +655,1021 @@
   }
 
   /* --- мотоцикл ------------------------------------------------------------- */
+  // Мотоцикл: узкий, но с читаемыми деталями — рама, бак, седло, вилка,
+  // выхлоп, гонщик в шлеме. Раньше детали сливались в одно тёмное пятно.
   function drawMoto(len, base) {
-    var hw = TS * 0.20, x0 = -len / 2, x1 = len / 2;
+    var ctx = R.ctx;
+    var hw = TS * 0.16;                       // полуширина корпуса
+    var x0 = -len / 2, x1 = len / 2;
     // лёгкий наклон в повороте — мотоцикл не едет строго прямо
-    R.ctx.rotate(Math.sin(G.t * 3 + base.length) * 0.05);
+    ctx.rotate(Math.sin(G.t * 2.6) * 0.035);
 
-    vWheel(x0 + 4, 0, 6.5);
-    vWheel(x1 - 4, 0, 6.5);
-    if (R.fine) {                                    // спицы
-      R.ctx.strokeStyle = 'rgba(210,220,235,0.5)'; R.ctx.lineWidth = 1;
-      R.ctx.beginPath(); R.ctx.moveTo(x0 + 4, -3.4); R.ctx.lineTo(x0 + 4, 3.4); R.ctx.stroke();
-      R.ctx.beginPath(); R.ctx.moveTo(x1 - 4, -3.4); R.ctx.lineTo(x1 - 4, 3.4); R.ctx.stroke();
+    // колёса: узкие, но с ободом и спицами
+    vWheel(x0 + 4.5, 0, 7);
+    vWheel(x1 - 4.5, 0, 7);
+    if (R.fine) {
+      ctx.strokeStyle = 'rgba(210,220,235,0.45)'; ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.moveTo(x0 + 4.5, -3.6); ctx.lineTo(x0 + 4.5, 3.6); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(x1 - 4.5, -3.6); ctx.lineTo(x1 - 4.5, 3.6); ctx.stroke();
     }
-    // рама, бак, седло, задний обтекатель
-    R.ctx.fillStyle = '#20242e';
-    rr(x0 + 2, -hw * 0.42, len - 4, hw * 0.84, 3); R.ctx.fill();
-    var tg = R.ctx.createLinearGradient(0, -hw, 0, hw);
-    tg.addColorStop(0, shade(base, 0.42));
+
+    // выхлоп по правому борту с хромированным наконечником
+    ctx.fillStyle = '#8d99ae';
+    rr(x0 + 5, hw * 1.05, len * 0.46, 2.8, 1.4); ctx.fill();
+    ctx.fillStyle = '#c9ced8';
+    rr(x1 - len * 0.30, hw * 1.0, len * 0.16, 3.4, 1.7); ctx.fill();
+
+    // рама и маятник — тёмная балка по центру
+    ctx.fillStyle = '#20242e';
+    rr(x0 + 4, -hw * 0.5, len - 8, hw, 2.5); ctx.fill();
+
+    // бак: самый заметный цветной элемент
+    var tg = ctx.createLinearGradient(0, -hw * 1.1, 0, hw * 1.1);
+    tg.addColorStop(0, shade(base, 0.5));
     tg.addColorStop(0.45, base);
-    tg.addColorStop(1, shade(base, -0.42));
-    rr(x1 - len * 0.52, -hw, len * 0.34, hw * 2, 4);
-    R.ctx.fillStyle = tg; R.ctx.fill();
-    R.ctx.fillStyle = 'rgba(255,255,255,0.22)';
-    R.ctx.fillRect(x1 - len * 0.50, -hw * 0.72, len * 0.28, 1.6);
-    R.ctx.fillStyle = '#161a22';                     // седло
-    rr(x0 + len * 0.10, -hw * 0.86, len * 0.34, hw * 1.72, 3); R.ctx.fill();
-    R.ctx.fillStyle = shade(base, -0.1);             // задний обтекатель
-    rr(x0 + 1, -hw * 0.66, len * 0.18, hw * 1.32, 3); R.ctx.fill();
-    // выхлоп вдоль борта
-    R.ctx.fillStyle = '#b9c1cd';
-    rr(x0 + 4, hw * 0.7, len * 0.55, 2.2, 1); R.ctx.fill();
-    // руль и вилка
-    R.ctx.fillStyle = '#c9ced8';
-    rr(x1 - len * 0.20, -hw * 1.8, 3, hw * 3.6, 1.4); R.ctx.fill();
-    R.ctx.fillStyle = '#8f98a6';
-    R.ctx.fillRect(x1 - len * 0.20, -hw * 1.5, len * 0.16, 2);
-    R.ctx.fillRect(x1 - len * 0.20, hw * 1.5 - 2, len * 0.16, 2);
-    // гонщик: корпус, руки, шлем с визором
-    R.ctx.fillStyle = shade(base, -0.25);
-    R.ctx.beginPath(); R.ctx.ellipse(-len * 0.02, 0, hw * 1.5, hw * 1.35, 0, 0, 6.2832); R.ctx.fill();
-    R.ctx.fillStyle = '#2b3240';
-    R.ctx.fillRect(-len * 0.02, -hw * 2.1, hw * 1.2, hw * 4.2);
-    R.ctx.fillStyle = '#f2f5fa';
-    R.ctx.beginPath(); R.ctx.arc(len * 0.04, 0, hw * 1.55, 0, 6.2832); R.ctx.fill();
-    R.ctx.fillStyle = 'rgba(18,24,38,0.9)';
+    tg.addColorStop(1, shade(base, -0.45));
+    rr(-len * 0.02, -hw * 1.1, len * 0.38, hw * 2.2, 4);
+    ctx.fillStyle = tg; ctx.fill();
+    ctx.strokeStyle = 'rgba(15,20,30,0.45)'; ctx.lineWidth = 1; ctx.stroke();
+    if (R.fine) {
+      ctx.fillStyle = 'rgba(255,255,255,0.35)';
+      rr(-len * 0.005, -hw * 0.8, len * 0.34, 1.7, 1); ctx.fill();
+    }
+
+    // седло и задний обтекатель
+    ctx.fillStyle = '#161a22';
+    rr(-len * 0.30, -hw * 0.9, len * 0.26, hw * 1.8, 3); ctx.fill();
+    ctx.fillStyle = shade(base, -0.2);
+    rr(x0 + 2, -hw * 0.7, len * 0.16, hw * 1.4, 3); ctx.fill();
+    if (R.fine) {
+      ctx.fillStyle = 'rgba(255,255,255,0.18)';
+      rr(x0 + 3, -hw * 0.55, len * 0.12, 1.4, 0.7); ctx.fill();
+    }
+
+    // вилка от руля к переднему колесу
+    ctx.strokeStyle = '#b9c1cd'; ctx.lineWidth = 2.2; ctx.lineCap = 'round';
+    ctx.beginPath(); ctx.moveTo(len * 0.16, -hw * 0.9); ctx.lineTo(x1 - 4.5, 0); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(len * 0.16, hw * 0.9); ctx.lineTo(x1 - 4.5, 0); ctx.stroke();
+    // руль
+    ctx.fillStyle = '#e6ebf3';
+    rr(len * 0.12, -hw * 1.9, 3, hw * 3.8, 1.5); ctx.fill();
+
+    // гонщик: корпус, руки к рулю, шлем с визором
+    ctx.fillStyle = '#2b3240';
+    ctx.beginPath(); ctx.ellipse(-len * 0.06, 0, hw * 1.45, hw * 1.25, 0, 0, 6.2832); ctx.fill();
+    ctx.fillStyle = shade(base, -0.32);
+    ctx.beginPath(); ctx.ellipse(-len * 0.11, 0, hw * 1.05, hw * 0.9, 0, 0, 6.2832); ctx.fill();
+    ctx.strokeStyle = '#2b3240'; ctx.lineWidth = 2.8;
+    ctx.beginPath(); ctx.moveTo(len * 0.0, -hw * 0.6); ctx.lineTo(len * 0.12, -hw * 1.2); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(len * 0.0, hw * 0.6); ctx.lineTo(len * 0.12, hw * 1.2); ctx.stroke();
+    ctx.fillStyle = '#f2f5fa';
+    ctx.beginPath(); ctx.arc(len * 0.05, 0, hw * 1.3, 0, 6.2832); ctx.fill();
+    ctx.strokeStyle = 'rgba(120,132,155,0.5)'; ctx.lineWidth = 1; ctx.stroke();
+    ctx.fillStyle = 'rgba(18,24,38,0.88)';
+    ctx.beginPath();
+    ctx.arc(len * 0.05 + hw * 0.34, 0, hw * 1.05, -1.2, 1.2);
+    ctx.lineTo(len * 0.05 + hw * 0.34, 0);
+    ctx.closePath(); ctx.fill();
+    if (R.fine) {
+      ctx.fillStyle = 'rgba(255,255,255,0.45)';
+      ctx.fillRect(len * 0.05 - hw * 0.9, -hw * 0.55, hw * 0.7, 1.2);
+    }
+
+    // фара и стоп-сигнал
+    ctx.fillStyle = '#fff3c4';
+    ctx.beginPath(); ctx.arc(x1 - 3, 0, 2.4, 0, 6.2832); ctx.fill();
+    ctx.fillStyle = 'rgba(255,243,196,0.25)';
+    ctx.beginPath(); ctx.arc(x1 - 3, 0, 5.5, 0, 6.2832); ctx.fill();
+    ctx.fillStyle = '#e8352a';
+    rr(x0 + 1, -2.6, 3, 5.2, 1.4); ctx.fill();
+  }
+
+  /* --- снегоуборщик --------------------------------------------------------- */
+  function drawSnowplow(len, base) {
+    var hw = CAR_W / 2 + 2, x0 = -len / 2, x1 = len / 2, i, j;
+    var pw = hw * 1.34;                              // отвал заметно шире кузова
+    var xBlade = x1 + 7;                             // режущая кромка выступает за нос
+    // колёса: ведущие задние с цепями противоскольжения
+    vWheel(x0 + 11, -hw + 0.5, 9, true);
+    vWheel(x0 + 11, hw - 0.5, 9, true);
+    vWheel(x1 - 17, -hw + 0.5, 8, true);
+    vWheel(x1 - 17, hw - 0.5, 8, true);
+    if (R.fine) {                                    // цепи: поперечные звенья по протектору
+      R.ctx.strokeStyle = 'rgba(214,222,234,0.8)'; R.ctx.lineWidth = 1;
+      for (j = 0; j < 2; j++) {
+        var cwy = j === 0 ? -hw + 0.5 : hw - 0.5;
+        for (i = 0; i < 3; i++) {
+          var cl = cwy - 3.2 + i * 3.2;
+          R.ctx.beginPath(); R.ctx.moveTo(x0 + 5.5, cl); R.ctx.lineTo(x0 + 16.5, cl); R.ctx.stroke();
+          R.ctx.beginPath(); R.ctx.moveTo(x1 - 22.5, cl); R.ctx.lineTo(x1 - 11.5, cl); R.ctx.stroke();
+        }
+      }
+    }
+
+    // кузов и швы панелей
+    vBody(len, hw, base, 6);
+    vSeam(x0 + len * 0.30, hw);
+    vSeam(x1 - len * 0.24, hw);
+    if (R.fine) {                                    // рёбра борта и потёртости от реагентов
+      R.ctx.fillStyle = 'rgba(0,0,0,0.12)';
+      for (i = 1; i <= 4; i++) { R.ctx.fillRect(x0 + len * 0.30 * (i / 5), -hw + 1.8, 1.6, hw * 2 - 3.6); }
+      R.ctx.fillStyle = 'rgba(255,255,255,0.10)';
+      rr(x1 - len * 0.22, -hw + 2.2, len * 0.14, hw * 2 - 4.4, 3); R.ctx.fill();
+    }
+
+    // широкая кабина: лобовое занимает переднюю часть, крыша — остальное
+    var xc0 = x0 + len * 0.34, xc1 = x1 - len * 0.22, cw = xc1 - xc0;
+    R.ctx.fillStyle = shade(base, 0.22);
+    rr(xc0, -hw + 1.2, cw, hw * 2 - 2.4, 4); R.ctx.fill();
+    R.ctx.strokeStyle = 'rgba(0,0,0,0.16)'; R.ctx.lineWidth = 1; R.ctx.stroke();
+    vGlassQuad([xc1, -hw * 0.84, xc1, hw * 0.84, xc1 - cw * 0.34, hw * 0.95, xc1 - cw * 0.34, -hw * 0.95]);
+    R.ctx.fillStyle = 'rgba(30,40,55,0.85)';         // боковые окна кабины
+    R.ctx.fillRect(xc0 + 1.5, -hw * 0.98, cw * 0.42, 2.6);
+    R.ctx.fillRect(xc0 + 1.5, hw * 0.98 - 2.6, cw * 0.42, 2.6);
+    if (R.fine) { vHandles(xc0 + 1.5, hw, 5); }
+    // крыша кабины — до основания лобового стекла
+    R.ctx.fillStyle = shade(base, 0.32);
+    rr(xc0 + 1.5, -hw * 0.72, cw * 0.62, hw * 1.44, 3); R.ctx.fill();
+
+    // отвал: скошенные края, рёбра жёсткости, хромированная кромка, штанги
+    var bg = R.ctx.createLinearGradient(0, -pw, 0, pw);
+    bg.addColorStop(0, shade(base, 0.44));
+    bg.addColorStop(0.45, base);
+    bg.addColorStop(1, shade(base, -0.46));
     R.ctx.beginPath();
-    R.ctx.arc(len * 0.04 + hw * 0.35, 0, hw * 1.3, -1.25, 1.25);
-    R.ctx.lineTo(len * 0.04 + hw * 0.35, 0);
+    R.ctx.moveTo(x1 - 5, -pw);
+    R.ctx.lineTo(xBlade, -pw * 0.62);
+    R.ctx.lineTo(xBlade, pw * 0.62);
+    R.ctx.lineTo(x1 - 5, pw);
+    R.ctx.closePath();
+    R.ctx.fillStyle = bg; R.ctx.fill();
+    R.ctx.strokeStyle = 'rgba(18,22,32,0.5)'; R.ctx.lineWidth = 1.1; R.ctx.stroke();
+    if (R.fine) {
+      R.ctx.save(); R.ctx.clip();
+      R.ctx.fillStyle = 'rgba(255,255,255,0.20)';    // блик по верхней кромке отвала
+      R.ctx.fillRect(x1 - 5, -pw, 11, pw * 2);
+      R.ctx.strokeStyle = 'rgba(0,0,0,0.28)'; R.ctx.lineWidth = 1;
+      for (i = 0; i < 4; i++) {                      // рёбра жёсткости поперёк отвала
+        var ry = -pw * 0.70 + i * (pw * 1.40 / 3);
+        R.ctx.beginPath(); R.ctx.moveTo(x1 - 4, ry); R.ctx.lineTo(xBlade - 2, ry); R.ctx.stroke();
+      }
+      R.ctx.restore();
+      R.ctx.fillStyle = '#d7dde8';                   // хром режущей кромки
+      rr(xBlade - 2.6, -pw * 0.62, 2.6, pw * 1.24, 1); R.ctx.fill();
+      R.ctx.fillStyle = 'rgba(255,255,255,0.55)';
+      R.ctx.fillRect(xBlade - 2.4, -pw * 0.55, 1, pw * 1.1);
+      R.ctx.strokeStyle = '#3a4150'; R.ctx.lineWidth = 2.4;   // толкающие штанги к раме
+      R.ctx.beginPath(); R.ctx.moveTo(x1 - 13, -hw * 0.46); R.ctx.lineTo(x1 - 4, -hw * 0.86); R.ctx.stroke();
+      R.ctx.beginPath(); R.ctx.moveTo(x1 - 13, hw * 0.46); R.ctx.lineTo(x1 - 4, hw * 0.86); R.ctx.stroke();
+      R.ctx.strokeStyle = '#c9ced8'; R.ctx.lineWidth = 2;     // гидроцилиндр поворота
+      R.ctx.beginPath(); R.ctx.moveTo(x1 - 7, 0); R.ctx.lineTo(xBlade - 4, 0); R.ctx.stroke();
+    }
+
+    vMirrors(xc1 - 1, hw, base);
+    vHead(x1 - 12, hw, true);                        // фары вынесены на отвал
+    vTail(x0 + 0.6, hw);
+    vPlate(x0 + 0.6, 0);
+
+    // проблесковая мигалка на крыше кабины
+    var bl = Math.floor(G.t * 7) % 2 === 0;
+    R.ctx.fillStyle = '#20242e';
+    rr(xc0 + cw * 0.34, -hw * 0.30, 7.5, hw * 0.60, 2); R.ctx.fill();
+    R.ctx.fillStyle = bl ? '#f6a623' : '#6b7280';
+    rr(xc0 + cw * 0.34 + 0.9, -hw * 0.26, 5.7, hw * 0.52, 1.6); R.ctx.fill();
+    if (R.fine && bl) {
+      var sg = R.ctx.createRadialGradient(xc0 + cw * 0.34 + 3, 0, 1, xc0 + cw * 0.34 + 3, 0, 19);
+      sg.addColorStop(0, 'rgba(255,190,80,0.34)');
+      sg.addColorStop(1, 'rgba(0,0,0,0)');
+      R.ctx.fillStyle = sg;
+      R.ctx.beginPath(); R.ctx.arc(xc0 + cw * 0.34 + 3, 0, 19, 0, 6.2832); R.ctx.fill();
+    }
+  }
+
+  /* --- пожарная машина ------------------------------------------------------ */
+  function drawFireTruck(len, base) {
+    var hw = CAR_W / 2 + 2, x0 = -len / 2, x1 = len / 2, i;
+    // три оси: передняя и две задние
+    vWheel(x1 - 15, -hw + 0.5, 8.5, true);
+    vWheel(x1 - 15, hw - 0.5, 8.5, true);
+    vWheel(x0 + 12, -hw + 0.5, 8.5, true);
+    vWheel(x0 + 12, hw - 0.5, 8.5, true);
+    vWheel(x0 + 23, -hw + 0.5, 8.5, true);
+    vWheel(x0 + 23, hw - 0.5, 8.5, true);
+
+    vBody(len, hw, base, 7);
+
+    var xCab0 = x1 - len * 0.26, xCab1 = x1 - 2;
+    // лобовое стекло впереди, крыша кабины — за ним
+    vGlassQuad([xCab1, -hw * 0.88, xCab1, hw * 0.88,
+                xCab1 - (xCab1 - xCab0) * 0.36, hw * 0.96, xCab1 - (xCab1 - xCab0) * 0.36, -hw * 0.96]);
+    R.ctx.fillStyle = 'rgba(30,40,55,0.85)';
+    R.ctx.fillRect(xCab0 + 2, -hw * 0.99, 4, 2.8);
+    R.ctx.fillRect(xCab0 + 2, hw * 0.99 - 2.8, 4, 2.8);
+    R.ctx.fillStyle = shade(base, 0.24);             // крыша кабины
+    rr(xCab0 + 2, -hw * 0.80, (xCab1 - xCab0) * 0.60, hw * 1.60, 3); R.ctx.fill();
+    vSeam(xCab0 - 2, hw);
+
+    // лестница на крыше: два прогона с поперечинами
+    var xL0 = x0 + 8, xL1 = xCab0 - 8;
+    R.ctx.fillStyle = '#c9ced8';
+    R.ctx.fillRect(xL0, -hw * 0.58, xL1 - xL0, 2.4);
+    R.ctx.fillRect(xL0, hw * 0.58 - 2.4, xL1 - xL0, 2.4);
+    if (R.fine) {
+      R.ctx.fillStyle = 'rgba(70,80,96,0.85)';
+      for (i = 0; i * 7 < xL1 - xL0; i++) {
+        R.ctx.fillRect(xL0 + i * 7, -hw * 0.58, 1.8, hw * 1.16);
+      }
+      R.ctx.fillStyle = 'rgba(255,255,255,0.30)';
+      R.ctx.fillRect(xL0, -hw * 0.58, xL1 - xL0, 0.7);
+    }
+
+    // боковые отсеки с хромированными ручками и защёлками
+    var xB0 = x0 + 4, xB1 = xCab0 - 6, n = 4, bw = (xB1 - xB0) / n;
+    for (i = 0; i < n; i++) {
+      R.ctx.fillStyle = i % 2 === 0 ? shade(base, -0.06) : shade(base, -0.16);
+      rr(xB0 + i * bw + 1, -hw + 1.8, bw - 2, hw * 2 - 3.6, 3); R.ctx.fill();
+    }
+    R.ctx.strokeStyle = 'rgba(0,0,0,0.22)'; R.ctx.lineWidth = 1;
+    for (i = 1; i < n; i++) { vSeam(xB0 + i * bw, hw, -hw + 2, hw - 2); }
+    if (R.fine) {
+      R.ctx.fillStyle = '#cfd6e1';                   // ручки отсеков
+      for (i = 0; i < n; i++) {
+        rr(xB0 + i * bw + bw * 0.22, -hw + 3.2, bw * 0.5, 1.8, 0.9);
+        R.ctx.fill();
+        rr(xB0 + i * bw + bw * 0.22, hw - 5.0, bw * 0.5, 1.8, 0.9);
+        R.ctx.fill();
+      }
+      R.ctx.fillStyle = 'rgba(255,255,255,0.35)';    // хром по борту и порог
+      R.ctx.fillRect(x0 + 3, -hw + 1.0, len - 8, 1.1);
+      R.ctx.fillRect(x0 + 3, hw - 2.1, len - 8, 1.1);
+      R.ctx.fillStyle = 'rgba(0,0,0,0.16)';
+      for (i = 0; i < 4; i++) { R.ctx.fillRect(x0 + 12 + i * 9, hw - 4.4, 3, 1.4); }   // грязевики
+    }
+
+    // лебёдка на носу: барабан, трос и крюк
+    R.ctx.fillStyle = '#3a4150';
+    rr(x1 - 9, -hw * 0.52, 6, hw * 1.04, 1.6); R.ctx.fill();
+    if (R.fine) {
+      R.ctx.fillStyle = '#c9ced8';
+      R.ctx.fillRect(x1 - 8, -hw * 0.44, 1.6, hw * 0.88);
+      R.ctx.strokeStyle = 'rgba(40,46,58,0.9)'; R.ctx.lineWidth = 1.2;
+      R.ctx.beginPath(); R.ctx.moveTo(x1 - 3, -hw * 0.16); R.ctx.lineTo(x1 + 1, -hw * 0.16); R.ctx.stroke();
+      R.ctx.beginPath();
+      R.ctx.arc(x1 + 2, -hw * 0.16, 2.2, -1.1, 2.1); R.ctx.stroke();     // крюк
+    }
+    R.ctx.fillStyle = '#b9c1cd';                     // хромированный бампер
+    rr(x1 - 3.5, -hw * 0.96, 3, hw * 1.92, 1.2); R.ctx.fill();
+
+    // красно-синяя мигалка на крыше кабины
+    var bl = Math.floor(G.t * 9) % 2 === 0;
+    R.ctx.fillStyle = '#20242e';
+    rr(xCab0 + 6, -hw * 0.64, 10, hw * 1.28, 2); R.ctx.fill();
+    R.ctx.fillStyle = bl ? '#ef4444' : '#6b7280';
+    rr(xCab0 + 6.8, -hw * 0.60, 4.2, hw * 1.20, 1.4); R.ctx.fill();
+    R.ctx.fillStyle = bl ? '#6b7280' : '#3b82f6';
+    rr(xCab0 + 11.4, -hw * 0.60, 4.2, hw * 1.20, 1.4); R.ctx.fill();
+    if (R.fine) {
+      var lg = R.ctx.createRadialGradient(xCab0 + 11, 0, 1, xCab0 + 11, 0, 20);
+      lg.addColorStop(0, bl ? 'rgba(255,80,80,0.32)' : 'rgba(90,150,255,0.32)');
+      lg.addColorStop(1, 'rgba(0,0,0,0)');
+      R.ctx.fillStyle = lg;
+      R.ctx.beginPath(); R.ctx.arc(xCab0 + 11, 0, 20, 0, 6.2832); R.ctx.fill();
+      vHandles(xCab0 + 5, hw, 6);
+    }
+
+    vMirrors(xCab1 - 2, hw, base);
+    vHead(x1 - 2.5, hw, true);
+    vTail(x0 + 0.6, hw);
+    vPlate(x0 + 0.6, 0);
+  }
+
+  /* --- фургон с мороженым --------------------------------------------------- */
+  function drawIceCream(len, base) {
+    var hw = CAR_W / 2 + 1.5, x0 = -len / 2, x1 = len / 2, i;
+    vWheel(x0 + 10, -hw + 0.5, 7.5);
+    vWheel(x0 + 10, hw - 0.5, 7.5);
+    vWheel(x1 - 12, -hw + 0.5, 7.5);
+    vWheel(x1 - 12, hw - 0.5, 7.5);
+
+    vBody(len, hw, base, 8);
+
+    var xWind0 = x0 + len * 0.66, xWind1 = x0 + len * 0.84;
+    R.ctx.fillStyle = 'rgba(255,255,255,0.10)';      // короткий капот
+    rr(xWind1, -hw + 2, x1 - xWind1 - 2, hw * 2 - 4, 3); R.ctx.fill();
+    if (R.fine) {
+      R.ctx.fillStyle = 'rgba(20,24,32,0.5)';
+      rr(x1 - 4.5, -hw * 0.52, 2.4, hw * 1.04, 1); R.ctx.fill();
+    }
+    vGlassQuad([xWind1, -hw * 0.88, xWind1, hw * 0.88, xWind0, hw * 0.97, xWind0, -hw * 0.97]);
+    R.ctx.fillStyle = 'rgba(30,40,55,0.85)';         // боковые окна кабины
+    R.ctx.fillRect(xWind0 + 1.5, -hw * 0.99, 4.5, 2.8);
+    R.ctx.fillRect(xWind0 + 1.5, hw * 0.99 - 2.8, 4.5, 2.8);
+
+    // крыша фургона и люк вытяжки
+    var xR0 = x0 + len * 0.10, xR1 = xWind0 - 2;
+    R.ctx.fillStyle = shade(base, 0.16);
+    rr(xR0, -hw * 0.86, xR1 - xR0, hw * 1.72, 5); R.ctx.fill();
+    R.ctx.strokeStyle = 'rgba(0,0,0,0.15)'; R.ctx.lineWidth = 1; R.ctx.stroke();
+    if (R.fine) {
+      R.ctx.fillStyle = 'rgba(0,0,0,0.11)';
+      for (i = 1; i <= 3; i++) { R.ctx.fillRect(xR0 + (xR1 - xR0) * (i / 4), -hw * 0.84, 1.6, hw * 1.68); }
+      R.ctx.fillStyle = 'rgba(255,255,255,0.40)';
+      rr(xR0 + (xR1 - xR0) * 0.06, -hw * 0.30, (xR1 - xR0) * 0.14, hw * 0.60, 2); R.ctx.fill();
+    }
+
+    // окно-раздача с поднятым ставнем на верхнем борту
+    var xS0 = x0 + len * 0.22, xS1 = x0 + len * 0.58;
+    vGlassQuad([xS1, -hw * 0.52, xS1, -hw * 0.99, xS0, -hw * 0.99, xS0, -hw * 0.52]);
+    R.ctx.fillStyle = 'rgba(255,255,255,0.42)';      // ставень, поднятый на крышу
+    rr(xS0 + 1, -hw * 0.50, xS1 - xS0 - 2, hw * 0.28, 2); R.ctx.fill();
+    R.ctx.strokeStyle = 'rgba(0,0,0,0.22)'; R.ctx.lineWidth = 1; R.ctx.stroke();
+    if (R.fine) {
+      R.ctx.fillStyle = '#c9ced8';                   // хром-направляющие ставня
+      R.ctx.fillRect(xS0 + 1, -hw * 0.99, 2, hw * 0.48);
+      R.ctx.fillRect(xS1 - 3, -hw * 0.99, 2, hw * 0.48);
+      R.ctx.fillStyle = 'rgba(255,255,255,0.55)';    // прилавок-полка
+      R.ctx.fillRect(xS0 + 2, -hw * 1.02, xS1 - xS0 - 4, 1.6);
+    }
+
+    // полосатый красно-белый навес над раздачей
+    var xA0 = x0 + len * 0.18, xA1 = x0 + len * 0.62, aw = (xA1 - xA0) / 5;
+    for (i = 0; i < 5; i++) {
+      R.ctx.fillStyle = i % 2 === 0 ? '#f7f2e8' : '#d94f4f';
+      R.ctx.fillRect(xA0 + i * aw, -hw - 7.5, aw, 7.5);
+    }
+    R.ctx.strokeStyle = 'rgba(18,22,32,0.35)'; R.ctx.lineWidth = 1;
+    R.ctx.strokeRect(xA0, -hw - 7.5, xA1 - xA0, 7.5);
+    if (R.fine) {
+      R.ctx.strokeStyle = '#c9ced8'; R.ctx.lineWidth = 1.6;   // стойки навеса
+      R.ctx.beginPath(); R.ctx.moveTo(xA0 + 1, -hw - 7.5); R.ctx.lineTo(xA0 + 1, -hw * 0.9); R.ctx.stroke();
+      R.ctx.beginPath(); R.ctx.moveTo(xA1 - 1, -hw - 7.5); R.ctx.lineTo(xA1 - 1, -hw * 0.9); R.ctx.stroke();
+    }
+
+    // эмблема-рожок мороженого на борту
+    var ex = x0 + len * 0.13, ey = -hw * 0.20;
+    R.ctx.fillStyle = '#c98a4b';
+    R.ctx.beginPath();
+    R.ctx.moveTo(ex - 4, ey - 4); R.ctx.lineTo(ex + 4, ey - 4); R.ctx.lineTo(ex, ey + 5.4);
+    R.ctx.closePath(); R.ctx.fill();
+    R.ctx.fillStyle = '#f7d9e2';
+    R.ctx.beginPath(); R.ctx.arc(ex, ey - 5.6, 3.4, 0, 6.2832); R.ctx.fill();
+    R.ctx.fillStyle = '#f2f5fa';
+    R.ctx.beginPath(); R.ctx.arc(ex - 2.6, ey - 7.6, 2.6, 0, 6.2832); R.ctx.fill();
+    if (R.fine) {
+      R.ctx.fillStyle = 'rgba(255,255,255,0.5)';
+      R.ctx.fillRect(ex - 3.4, ey - 3.4, 1.2, 4.4);
+      vHandles(x0 + len * 0.30, hw, 6);
+    }
+
+    vMirrors(xWind1 - 1, hw, base);
+    vHead(x1 - 2.5, hw, true);
+    vTail(x0 + 0.6, hw);
+    vPlate(x0 + 0.6, 0);
+  }
+
+  /* --- лимузин -------------------------------------------------------------- */
+  function drawLimo(len, base) {
+    var hw = CAR_W / 2 + 1, x0 = -len / 2, x1 = len / 2, i;
+    vWheel(x0 + 11, -hw + 0.5, 6.4);                 // низкий кузов — колёса небольшие
+    vWheel(x0 + 11, hw - 0.5, 6.4);
+    vWheel(x0 + len * 0.50, -hw + 0.5, 6.4);
+    vWheel(x0 + len * 0.50, hw - 0.5, 6.4);
+    vWheel(x1 - 11, -hw + 0.5, 6.4);
+    vWheel(x1 - 11, hw - 0.5, 6.4);
+
+    vBody(len, hw, base, Math.min(10, len * 0.10));
+
+    var xHood = x0 + len * 0.76, xTrunk = x0 + len * 0.16;
+    R.ctx.fillStyle = 'rgba(255,255,255,0.09)';      // длинный капот
+    rr(xHood, -hw + 2, x1 - xHood - 2.5, hw * 2 - 4, 3); R.ctx.fill();
+    if (R.fine) {
+      R.ctx.strokeStyle = 'rgba(0,0,0,0.18)'; R.ctx.lineWidth = 1;
+      R.ctx.beginPath(); R.ctx.moveTo(xHood + 2, -hw * 0.40); R.ctx.lineTo(x1 - 5, -hw * 0.28); R.ctx.stroke();
+      R.ctx.beginPath(); R.ctx.moveTo(xHood + 2, hw * 0.40); R.ctx.lineTo(x1 - 5, hw * 0.28); R.ctx.stroke();
+      R.ctx.fillStyle = 'rgba(20,24,32,0.55)';       // решётка радиатора
+      rr(x1 - 5, -hw * 0.58, 2.6, hw * 1.16, 1); R.ctx.fill();
+    }
+    vSeam(xTrunk, hw);
+    vSeam(x0 + len * 0.22, hw);
+
+    // длинная кабина: крыша между задним и лобовым стеклом
+    R.ctx.fillStyle = shade(base, 0.20);
+    rr(x0 + len * 0.24, -hw * 0.84, len * 0.44, hw * 1.68, 5); R.ctx.fill();
+    R.ctx.strokeStyle = 'rgba(0,0,0,0.16)'; R.ctx.lineWidth = 1; R.ctx.stroke();
+    vGlassQuad([x0 + len * 0.78, -hw * 0.76, x0 + len * 0.78, hw * 0.76,
+                x0 + len * 0.68, hw * 0.93, x0 + len * 0.68, -hw * 0.93]);
+    vGlassQuad([x0 + len * 0.28, -hw * 0.90, x0 + len * 0.28, hw * 0.90,
+                x0 + len * 0.18, hw * 0.96, x0 + len * 0.18, -hw * 0.96]);
+    R.ctx.fillStyle = 'rgba(20,28,40,0.94)';         // тонировка: почти чёрное стекло
+    for (i = 0; i < 3; i++) {
+      var wx = x0 + len * (0.30 + i * 0.155), ww = len * 0.115;
+      R.ctx.fillRect(wx, -hw * 0.995, ww, 3.6);
+      R.ctx.fillRect(wx, hw * 0.995 - 3.6, ww, 3.6);
+    }
+    if (R.fine) {
+      R.ctx.fillStyle = 'rgba(255,255,255,0.32)';    // хром окантовки стёкол
+      for (i = 0; i < 3; i++) {
+        var wx2 = x0 + len * (0.30 + i * 0.155), ww2 = len * 0.115;
+        R.ctx.fillRect(wx2, -hw * 0.995 + 3.7, ww2, 0.6);
+        R.ctx.fillRect(wx2, hw * 0.995 - 4.3, ww2, 0.6);
+      }
+      R.ctx.fillStyle = 'rgba(24,32,46,0.85)';       // люк на крыше
+      rr(x0 + len * 0.46, -hw * 0.34, len * 0.16, hw * 0.68, 2); R.ctx.fill();
+      R.ctx.fillStyle = 'rgba(255,255,255,0.22)';
+      rr(x0 + len * 0.47, -hw * 0.30, len * 0.14, hw * 0.22, 1.5); R.ctx.fill();
+      vHandles(x0 + len * 0.34, hw, 7);
+      vHandles(x0 + len * 0.60, hw, 7);
+    }
+
+    // хромированная линия по борту, пороги и колпаки колёс
+    R.ctx.fillStyle = '#d7dde8';
+    R.ctx.fillRect(x0 + 3, -hw + 1.3, len - 6, 1.2);
+    R.ctx.fillRect(x0 + 3, hw - 2.5, len - 6, 1.2);
+    if (R.fine) {
+      R.ctx.fillStyle = 'rgba(0,0,0,0.20)';
+      rr(x0 + 6, -hw + 0.4, len - 12, 1.4, 0.7); R.ctx.fill();
+      rr(x0 + 6, hw - 1.8, len - 12, 1.4, 0.7); R.ctx.fill();
+    }
+    // флажок на носу: древко и полотнище, колышущееся на ветру
+    var wav = Math.sin(G.t * 4) * 1.3;
+    R.ctx.fillStyle = '#cfd6e1';
+    R.ctx.fillRect(x1 - 9, -hw - 5.2, 1.7, 5.2);
+    R.ctx.fillStyle = '#2f6fb0';
+    R.ctx.beginPath();
+    R.ctx.moveTo(x1 - 9, -hw - 5.2);
+    R.ctx.lineTo(x1 - 15.5, -hw - 4.4 + wav);
+    R.ctx.lineTo(x1 - 9, -hw - 1.6);
     R.ctx.closePath(); R.ctx.fill();
     if (R.fine) {
-      R.ctx.fillStyle = 'rgba(255,255,255,0.4)';
-      R.ctx.fillRect(len * 0.04 - hw * 1.2, -hw * 0.5, hw * 0.9, 1.2);
+      R.ctx.fillStyle = 'rgba(255,255,255,0.45)';
+      R.ctx.fillRect(x1 - 9.6, -hw - 5.0, 0.7, 3.4);
     }
-    // фара и стоп
-    R.ctx.fillStyle = '#fff3c4';
-    R.ctx.beginPath(); R.ctx.arc(x1 - 2, 0, 2.6, 0, 6.2832); R.ctx.fill();
+
+    vMirrors(x0 + len * 0.74, hw, base);
+    vHead(x1 - 2.5, hw, true);
+    vTail(x0 + 0.6, hw);
+    vPlate(x0 + 0.6, 0);
+    if (R.fine) { vPlate(x1 - 1.6, 0); }
+  }
+
+  /* --- катафалк ------------------------------------------------------------- */
+  function drawHearse(len, base) {
+    var hw = CAR_W / 2 + 1.5, x0 = -len / 2, x1 = len / 2, i;
+    vWheel(x0 + 12, -hw + 0.5, 7.5, true);
+    vWheel(x0 + 12, hw - 0.5, 7.5, true);
+    vWheel(x1 - 12, -hw + 0.5, 7.5, true);
+    vWheel(x1 - 12, hw - 0.5, 7.5, true);
+
+    vBody(len, hw, base, 8);
+
+    var xCab0 = x0 + len * 0.60, xCab1 = x1 - 2.5;
+    // кабина: лобовое стекло впереди, крыша — за ним
+    vGlassQuad([xCab1, -hw * 0.86, xCab1, hw * 0.86,
+                xCab1 - (xCab1 - xCab0) * 0.38, hw * 0.95, xCab1 - (xCab1 - xCab0) * 0.38, -hw * 0.95]);
+    R.ctx.fillStyle = 'rgba(30,40,55,0.85)';
+    R.ctx.fillRect(xCab0 + 1.5, -hw * 0.99, 4, 2.8);
+    R.ctx.fillRect(xCab0 + 1.5, hw * 0.99 - 2.8, 4, 2.8);
+    R.ctx.fillStyle = shade(base, 0.20);             // крыша кабины
+    rr(xCab0 + 2, -hw * 0.82, (xCab1 - xCab0) * 0.58, hw * 1.64, 4); R.ctx.fill();
+    vSeam(xCab0 - 2, hw);
+
+    // высокий стеклянный отсек сзади: рама, рейлинги, панели
+    var xr0 = x0 + 4, xr1 = xCab0 - 6;
+    R.ctx.fillStyle = shade(base, 0.14);
+    rr(xr0, -hw * 0.92, xr1 - xr0, hw * 1.84, 4); R.ctx.fill();
+    R.ctx.strokeStyle = 'rgba(0,0,0,0.22)'; R.ctx.lineWidth = 1; R.ctx.stroke();
+    // большие стёкла отсека по обоим бортам (с бликом неба)
+    vGlassQuad([xr1 - 4, -hw * 0.86, xr1 - 4, -hw * 0.34, xr0 + 6, -hw * 0.34, xr0 + 6, -hw * 0.86]);
+    vGlassQuad([xr1 - 4, hw * 0.34, xr1 - 4, hw * 0.86, xr0 + 6, hw * 0.86, xr0 + 6, hw * 0.34]);
+    // задняя дверь отсека со стеклом
+    vGlassQuad([x0 + 6, -hw * 0.72, x0 + 6, hw * 0.72, x0 + 4, hw * 0.80, x0 + 4, -hw * 0.80]);
+    vSeam(x0 + 9, hw);
+    if (R.fine) {
+      R.ctx.strokeStyle = 'rgba(0,0,0,0.20)'; R.ctx.lineWidth = 1;
+      R.ctx.beginPath(); R.ctx.moveTo(xr0 + 3, -hw * 0.30); R.ctx.lineTo(xr1 - 2, -hw * 0.30); R.ctx.stroke();
+      R.ctx.beginPath(); R.ctx.moveTo(xr0 + 3, hw * 0.30); R.ctx.lineTo(xr1 - 2, hw * 0.30); R.ctx.stroke();
+      R.ctx.fillStyle = 'rgba(255,255,255,0.10)';    // драпировка: мягкие складки
+      for (i = 0; i < 5; i++) { R.ctx.fillRect(xr0 + 8 + i * ((xr1 - xr0 - 14) / 4), -hw * 0.26, 1.2, hw * 0.52); }
+    }
+    // хромированные рейлинги на крыше отсека
+    R.ctx.fillStyle = '#cfd6e1';
+    R.ctx.fillRect(xr0 + 3, -hw * 0.64, xr1 - xr0 - 8, 1.6);
+    R.ctx.fillRect(xr0 + 3, hw * 0.64 - 1.6, xr1 - xr0 - 8, 1.6);
+    // хромированные поручни-ручки по бортам (без религиозной символики)
+    R.ctx.fillStyle = '#c2cad6';
+    rr(xr0 + 10, -hw - 1.9, (xr1 - xr0) * 0.42, 1.9, 0.9); R.ctx.fill();
+    rr(xr0 + 10, hw, (xr1 - xr0) * 0.42, 1.9, 0.9); R.ctx.fill();
+    rr(xr0 + (xr1 - xr0) * 0.60, -hw - 1.9, (xr1 - xr0) * 0.30, 1.9, 0.9); R.ctx.fill();
+    rr(xr0 + (xr1 - xr0) * 0.60, hw, (xr1 - xr0) * 0.30, 1.9, 0.9); R.ctx.fill();
+    if (R.fine) {
+      R.ctx.fillStyle = 'rgba(0,0,0,0.28)';          // кронштейны поручней
+      R.ctx.fillRect(xr0 + 10, -hw - 1.2, 1.2, 1.2);
+      R.ctx.fillRect(xr0 + (xr1 - xr0) * 0.60, -hw - 1.2, 1.2, 1.2);
+      R.ctx.fillStyle = 'rgba(255,255,255,0.4)';     // хром-полоса по борту
+      R.ctx.fillRect(x0 + 5, -hw + 1.1, len - 12, 1.1);
+      R.ctx.fillRect(x0 + 5, hw - 2.2, len - 12, 1.1);
+    }
+
+    vMirrors(xCab1 - 3, hw, base);
+    vHead(x1 - 2.5, hw, true);
+    vTail(x0 + 0.6, hw);
+    vPlate(x0 + 0.6, 0);
+  }
+
+  /* --- мусоровоз ------------------------------------------------------------ */
+  function drawGarbage(len, base) {
+    var hw = CAR_W / 2 + 2, x0 = -len / 2, x1 = len / 2, i;
+    vWheel(x0 + 12, -hw + 0.5, 9, true);
+    vWheel(x0 + 12, hw - 0.5, 9, true);
+    vWheel(x0 + 24, -hw + 0.5, 9, true);
+    vWheel(x0 + 24, hw - 0.5, 9, true);
+    vWheel(x1 - 14, -hw + 0.5, 8.5, true);
+    vWheel(x1 - 14, hw - 0.5, 8.5, true);
+
+    vBody(len, hw, base, 7);
+
+    var xCab0 = x1 - len * 0.28, xCab1 = x1 - 2;
+    // тяжёлая кабина: большое лобовое впереди, крыша за ним
+    vGlassQuad([xCab1, -hw * 0.88, xCab1, hw * 0.88,
+                xCab1 - (xCab1 - xCab0) * 0.40, hw * 0.97, xCab1 - (xCab1 - xCab0) * 0.40, -hw * 0.97]);
+    R.ctx.fillStyle = 'rgba(30,40,55,0.85)';
+    R.ctx.fillRect(xCab0 + 2, -hw * 0.99, 4.5, 2.8);
+    R.ctx.fillRect(xCab0 + 2, hw * 0.99 - 2.8, 4.5, 2.8);
+    R.ctx.fillStyle = shade(base, 0.24);
+    rr(xCab0 + 2, -hw * 0.80, (xCab1 - xCab0) * 0.56, hw * 1.60, 3); R.ctx.fill();
+    vSeam(xCab0 - 2, hw);
+
+    // бункер: рёбра, задняя крышка с петлями, потёртости
+    var xB0 = x0 + 3, xB1 = xCab0 - 6;
+    R.ctx.fillStyle = shade(base, -0.14);
+    rr(xB0, -hw * 0.96, xB1 - xB0, hw * 1.92, 5); R.ctx.fill();
+    R.ctx.strokeStyle = 'rgba(0,0,0,0.24)'; R.ctx.lineWidth = 1.1; R.ctx.stroke();
+    if (R.fine) {
+      R.ctx.fillStyle = 'rgba(255,255,255,0.14)';    // верхняя грань бункера
+      R.ctx.fillRect(xB0 + 2, -hw * 0.94, xB1 - xB0 - 4, 1.6);
+      R.ctx.fillStyle = 'rgba(0,0,0,0.20)';          // рёбра жёсткости
+      for (i = 1; i <= 5; i++) { R.ctx.fillRect(xB0 + (xB1 - xB0) * (i / 6) - 0.9, -hw * 0.94, 1.9, hw * 1.88); }
+      R.ctx.fillStyle = 'rgba(255,255,255,0.22)';
+      for (i = 1; i <= 5; i++) { R.ctx.fillRect(xB0 + (xB1 - xB0) * (i / 6) + 1.0, -hw * 0.94, 0.8, hw * 1.88); }
+      R.ctx.fillStyle = 'rgba(0,0,0,0.13)';          // потёртости и вмятины
+      R.ctx.fillRect(xB0 + 7, -hw * 0.70, 6, 2.2);
+      R.ctx.fillRect(xB0 + (xB1 - xB0) * 0.55, hw * 0.52, 8, 2.0);
+      R.ctx.fillRect(xB0 + (xB1 - xB0) * 0.30, -hw * 0.34, 4, 1.8);
+    }
+    // задняя крышка с петлями и запорами
+    vSeam(xB0 + 6, hw);
+    R.ctx.fillStyle = shade(base, -0.30);
+    rr(xB0, -hw * 0.90, 6, hw * 1.80, 2.5); R.ctx.fill();
+    R.ctx.fillStyle = '#c2cad6';
+    R.ctx.fillRect(xB0 + 2.2, -hw * 0.72, 1.6, 4.2);
+    R.ctx.fillRect(xB0 + 2.2, hw * 0.72 - 4.2, 1.6, 4.2);
+
+    // гидроцилиндр по верхнему борту
+    R.ctx.save();
+    R.ctx.strokeStyle = '#3a4150'; R.ctx.lineWidth = 3.4;
+    R.ctx.beginPath(); R.ctx.moveTo(xB0 + 12, -hw * 0.72); R.ctx.lineTo(xB1 - 10, -hw * 0.60); R.ctx.stroke();
+    R.ctx.strokeStyle = '#cfd6e1'; R.ctx.lineWidth = 1.8;
+    R.ctx.beginPath(); R.ctx.moveTo(xB0 + (xB1 - xB0) * 0.55, -hw * 0.665); R.ctx.lineTo(xB1 - 10, -hw * 0.60); R.ctx.stroke();
+    R.ctx.restore();
+    if (R.fine) { vHandles(xCab0 + 6, hw, 6); }
+
+    vMirrors(xCab1 - 3, hw, base);
+    vHead(x1 - 2.5, hw, true);
+    vTail(x0 + 0.6, hw);
+    vPlate(x0 + 0.6, 0);
+
+    // проблесковая мигалка над кабиной
+    var bl = Math.floor(G.t * 7) % 2 === 0;
+    R.ctx.fillStyle = '#20242e';
+    rr(xCab0 + 10, -hw * 0.34, 8, hw * 0.68, 2); R.ctx.fill();
+    R.ctx.fillStyle = bl ? '#f6a623' : '#6b7280';
+    rr(xCab0 + 10.9, -hw * 0.30, 6.2, hw * 0.60, 1.6); R.ctx.fill();
+    if (R.fine && bl) {
+      var gg = R.ctx.createRadialGradient(xCab0 + 14, 0, 1, xCab0 + 14, 0, 19);
+      gg.addColorStop(0, 'rgba(255,190,80,0.32)');
+      gg.addColorStop(1, 'rgba(0,0,0,0)');
+      R.ctx.fillStyle = gg;
+      R.ctx.beginPath(); R.ctx.arc(xCab0 + 14, 0, 19, 0, 6.2832); R.ctx.fill();
+    }
+  }
+
+  /* --- эвакуатор ------------------------------------------------------------ */
+  function drawTow(len, base) {
+    var hw = CAR_W / 2 + 1.5, x0 = -len / 2, x1 = len / 2, i;
+    var xCab0 = x1 - len * 0.34, xCab1 = x1 - 2;
+    vWheel(x0 + 13, -hw + 0.5, 8.5, true);
+    vWheel(x0 + 13, hw - 0.5, 8.5, true);
+    vWheel(x1 - 13, -hw + 0.5, 8, true);
+    vWheel(x1 - 13, hw - 0.5, 8, true);
+
+    vBody(len, hw, base, 7);
+
+    // наклонная платформа сзади: сужается к корме, стальная с рёбрами
+    var xBed0 = x0 + 3, xBed1 = xCab0 - 5;
+    R.ctx.beginPath();
+    R.ctx.moveTo(xBed1, -hw * 0.94);
+    R.ctx.lineTo(xBed0 + 4, -hw * 0.78);
+    R.ctx.lineTo(xBed0 + 4, hw * 0.78);
+    R.ctx.lineTo(xBed1, hw * 0.94);
+    R.ctx.closePath();
+    var pg = R.ctx.createLinearGradient(0, -hw, 0, hw);
+    pg.addColorStop(0, shade(base, 0.30));
+    pg.addColorStop(0.5, shade(base, -0.10));
+    pg.addColorStop(1, shade(base, -0.42));
+    R.ctx.fillStyle = pg; R.ctx.fill();
+    R.ctx.strokeStyle = 'rgba(18,22,32,0.5)'; R.ctx.lineWidth = 1.1; R.ctx.stroke();
+    if (R.fine) {
+      R.ctx.fillStyle = 'rgba(0,0,0,0.18)';
+      for (i = 1; i <= 4; i++) {
+        var bx = xBed0 + 4 + (xBed1 - xBed0 - 4) * (i / 5);
+        R.ctx.fillRect(bx, -hw * 0.86, 1.6, hw * 1.72);
+      }
+      R.ctx.fillStyle = '#c9ced8';                   // хром-борта платформы
+      R.ctx.fillRect(xBed0 + 4, -hw * 0.80, xBed1 - xBed0 - 4, 1.7);
+      R.ctx.fillRect(xBed0 + 4, hw * 0.80 - 1.7, xBed1 - xBed0 - 4, 1.7);
+      R.ctx.fillStyle = '#3a4150';                   // колёсные упоры
+      rr(xBed0 + 12, -hw * 0.70, 3.4, 5, 1); R.ctx.fill();
+      rr(xBed0 + 12, hw * 0.70 - 5, 3.4, 5, 1); R.ctx.fill();
+      R.ctx.fillStyle = 'rgba(255,220,120,0.8)';     // боковые фонари платформы
+      for (i = 0; i < 3; i++) {
+        R.ctx.fillRect(xBed0 + 8 + i * 11, -hw - 1.4, 3.4, 1.8);
+        R.ctx.fillRect(xBed0 + 8 + i * 11, hw - 0.4, 3.4, 1.8);
+      }
+    }
+    // лебёдка у кабины: барабан и трос с крюком
+    R.ctx.fillStyle = '#3a4150';
+    rr(xBed1 - 8, -hw * 0.30, 5.5, hw * 0.60, 1.6); R.ctx.fill();
+    R.ctx.strokeStyle = 'rgba(40,46,58,0.9)'; R.ctx.lineWidth = 1.2;
+    R.ctx.beginPath(); R.ctx.moveTo(xBed1 - 7, 0); R.ctx.lineTo(xBed0 + 10, 0); R.ctx.stroke();
+    if (R.fine) {
+      R.ctx.fillStyle = '#c9ced8';
+      R.ctx.fillRect(xBed1 - 7.5, -hw * 0.24, 1.4, hw * 0.48);
+      R.ctx.strokeStyle = '#c9ced8'; R.ctx.lineWidth = 1.6;    // крюк на конце троса
+      R.ctx.beginPath(); R.ctx.arc(xBed0 + 11, 0, 2.6, -1.2, 2.2); R.ctx.stroke();
+    }
+    // стрела-кран над платформой с хром-секцией
+    R.ctx.fillStyle = shade(base, -0.34);
+    R.ctx.beginPath();
+    R.ctx.moveTo(xBed1 - 3, -hw * 0.24);
+    R.ctx.lineTo(xBed0 + 8, -hw * 0.06);
+    R.ctx.lineTo(xBed0 + 8, hw * 0.20);
+    R.ctx.lineTo(xBed1 - 3, hw * 0.12);
+    R.ctx.closePath(); R.ctx.fill();
+    R.ctx.strokeStyle = 'rgba(18,22,32,0.45)'; R.ctx.lineWidth = 1; R.ctx.stroke();
+    if (R.fine) {
+      R.ctx.fillStyle = '#cfd6e1';                   // выдвижная секция стрелы
+      R.ctx.fillRect(xBed0 + 9, -hw * 0.04, (xBed1 - xBed0) * 0.28, hw * 0.20);
+      R.ctx.fillStyle = 'rgba(255,255,255,0.25)';
+      R.ctx.fillRect(xBed1 - 4, -hw * 0.22, (xBed1 - xBed0) * 0.5, 1.2);
+      R.ctx.strokeStyle = 'rgba(40,46,58,0.8)'; R.ctx.lineWidth = 1.1;   // трос стрелы
+      R.ctx.beginPath(); R.ctx.moveTo(xBed0 + 12, hw * 0.08); R.ctx.lineTo(xBed0 + 12, hw * 0.42); R.ctx.stroke();
+    }
+
+    // кабина: лобовое впереди, крыша — за ним
+    vGlassQuad([xCab1, -hw * 0.86, xCab1, hw * 0.86,
+                xCab1 - (xCab1 - xCab0) * 0.36, hw * 0.95, xCab1 - (xCab1 - xCab0) * 0.36, -hw * 0.95]);
+    R.ctx.fillStyle = 'rgba(30,40,55,0.85)';
+    R.ctx.fillRect(xCab0 + 2, -hw * 0.99, 4, 2.8);
+    R.ctx.fillRect(xCab0 + 2, hw * 0.99 - 2.8, 4, 2.8);
+    R.ctx.fillStyle = shade(base, 0.24);
+    rr(xCab0 + 2, -hw * 0.80, (xCab1 - xCab0) * 0.58, hw * 1.60, 3); R.ctx.fill();
+    vSeam(xCab0 - 2, hw);
+    if (R.fine) { vHandles(xCab0 + 5, hw, 6); }
+
+    // мигалка на крыше кабины
+    var bl = Math.floor(G.t * 7) % 2 === 0;
+    R.ctx.fillStyle = '#20242e';
+    rr(xCab0 + 10, -hw * 0.30, 8, hw * 0.60, 2); R.ctx.fill();
+    R.ctx.fillStyle = bl ? '#f6a623' : '#6b7280';
+    rr(xCab0 + 10.9, -hw * 0.26, 6.2, hw * 0.52, 1.6); R.ctx.fill();
+
+    vMirrors(xCab1 - 3, hw, base);
+    vHead(x1 - 2.5, hw, true);
+    vTail(x0 + 0.6, hw);
+    vPlate(x0 + 0.6, 0);
+  }
+
+  /* --- болид ---------------------------------------------------------------- */
+  function drawF1(len, base) {
+    var hw = TS * 0.17, x0 = -len / 2, x1 = len / 2;
+    var wy = TS * 0.27, ww = TS * 0.38;               // открытые колёса вынесены за кузов
+    // колёса снаружи кузова: передняя и задняя оси
+    vWheel(x1 - 10, -wy, 8.5, true);
+    vWheel(x1 - 10, wy, 8.5, true);
+    vWheel(x0 + 10, -wy, 9, true);
+    vWheel(x0 + 10, wy, 9, true);
+    if (R.fine) {                                     // диски и крылышки над колёсами
+      R.ctx.fillStyle = 'rgba(24,28,36,0.55)';
+      rr(x1 - 13, -wy - 6, 7, 4, 1.5); R.ctx.fill();
+      rr(x1 - 13, wy + 2, 7, 4, 1.5); R.ctx.fill();
+    }
+
+    // узкий монокок: острый нос
+    var g = R.ctx.createLinearGradient(0, -hw, 0, hw);
+    g.addColorStop(0, shade(base, 0.42));
+    g.addColorStop(0.35, base);
+    g.addColorStop(1, shade(base, -0.46));
+    R.ctx.beginPath();
+    R.ctx.moveTo(x1 - 6, -hw * 0.55);
+    R.ctx.quadraticCurveTo(x1 + 4, 0, x1 - 6, hw * 0.55);
+    R.ctx.lineTo(x0 + 4, hw * 1.05);
+    R.ctx.lineTo(x0 + 2, -hw * 1.05);
+    R.ctx.closePath();
+    R.ctx.fillStyle = g; R.ctx.fill();
+    R.ctx.strokeStyle = 'rgba(18,22,32,0.5)'; R.ctx.lineWidth = 1.1; R.ctx.stroke();
+
+    // гоночные полосы по корпусу
+    R.ctx.fillStyle = 'rgba(255,255,255,0.72)';
+    R.ctx.fillRect(x0 + 6, -hw * 0.46, len - 16, 1.8);
+    R.ctx.fillRect(x0 + 6, hw * 0.46 - 1.8, len - 16, 1.8);
+    // понтоны по бокам кокпита
+    R.ctx.fillStyle = shade(base, -0.16);
+    rr(x0 + len * 0.18, -hw * 1.55, len * 0.30, hw * 0.55, 2); R.ctx.fill();
+    rr(x0 + len * 0.18, hw * 1.00, len * 0.30, hw * 0.55, 2); R.ctx.fill();
+    if (R.fine) {
+      R.ctx.fillStyle = 'rgba(0,0,0,0.30)';           // воздухозаборники понтонов
+      rr(x0 + len * 0.20, -hw * 1.48, len * 0.09, hw * 0.42, 1.4); R.ctx.fill();
+      rr(x0 + len * 0.20, hw * 1.06, len * 0.09, hw * 0.42, 1.4); R.ctx.fill();
+    }
+
+    // кокпит с пилотом в шлеме
+    R.ctx.fillStyle = 'rgba(18,24,34,0.9)';
+    rr(x0 + len * 0.42, -hw * 0.86, len * 0.17, hw * 1.72, 3); R.ctx.fill();
+    R.ctx.fillStyle = shade(base, -0.30);
+    R.ctx.beginPath(); R.ctx.ellipse(x0 + len * 0.50, 0, hw * 0.75, hw * 0.92, 0, 0, 6.2832); R.ctx.fill();
+    R.ctx.fillStyle = '#f2f5fa';                      // шлем
+    R.ctx.beginPath(); R.ctx.arc(x0 + len * 0.52, 0, hw * 0.62, 0, 6.2832); R.ctx.fill();
+    R.ctx.fillStyle = 'rgba(18,24,38,0.9)';           // визор
+    R.ctx.beginPath();
+    R.ctx.arc(x0 + len * 0.52 + hw * 0.2, 0, hw * 0.5, -1.2, 1.2);
+    R.ctx.lineTo(x0 + len * 0.52 + hw * 0.2, 0);
+    R.ctx.closePath(); R.ctx.fill();
+    if (R.fine) {
+      R.ctx.strokeStyle = '#c9ced8'; R.ctx.lineWidth = 1.8;      // дуга безопасности (halo)
+      R.ctx.beginPath(); R.ctx.arc(x0 + len * 0.46, 0, hw * 0.95, -Math.PI * 0.5, Math.PI * 0.5); R.ctx.stroke();
+      R.ctx.fillStyle = 'rgba(255,255,255,0.4)';
+      R.ctx.fillRect(x0 + len * 0.50, -hw * 0.55, hw * 0.5, 1.1);
+    }
+
+    // переднее антикрыло с концевыми пластинами
+    R.ctx.fillStyle = '#232833';
+    rr(x1 - 3, -ww, 5, ww * 2, 1.6); R.ctx.fill();
+    R.ctx.fillStyle = shade(base, -0.20);
+    R.ctx.fillRect(x1 - 3, -ww, 5, 3);
+    R.ctx.fillRect(x1 - 3, ww - 3, 5, 3);
+    // заднее антикрыло: две плоскости и стойки
+    R.ctx.fillStyle = '#232833';
+    rr(x0 - 3, -ww * 0.94, 6, ww * 1.88, 1.8); R.ctx.fill();
+    R.ctx.fillStyle = 'rgba(255,255,255,0.18)';
+    R.ctx.fillRect(x0 - 3, -ww * 0.90, 6, 1.6);
+    R.ctx.fillStyle = shade(base, -0.28);
+    R.ctx.fillRect(x0 + 4, -ww * 0.62, 3, 4);
+    R.ctx.fillRect(x0 + 4, ww * 0.62 - 4, 3, 4);
+    if (R.fine) {
+      R.ctx.fillStyle = '#c9ced8';                    // концевые пластины
+      R.ctx.fillRect(x0 - 4, -ww * 1.02, 2, ww * 0.30);
+      R.ctx.fillRect(x0 - 4, ww * 0.72, 2, ww * 0.30);
+      R.ctx.fillRect(x1 - 4, -ww * 1.0, 1.8, ww * 0.24);
+      R.ctx.fillRect(x1 - 4, ww * 0.76, 1.8, ww * 0.24);
+      R.ctx.fillStyle = '#2b3240';                    // выхлоп по центру кормы
+      rr(x0 + 0.5, -2.6, 3.4, 5.2, 1.2); R.ctx.fill();
+    }
+
+    // фары и стопы болида
+    R.ctx.fillStyle = '#dde5f0';
+    rr(x1 - 8, -hw * 0.92, 3, 3, 1.2); R.ctx.fill();
+    rr(x1 - 8, hw * 0.92 - 3, 3, 3, 1.2); R.ctx.fill();
+    R.ctx.fillStyle = 'rgba(255,250,215,0.95)';
+    rr(x1 - 7.4, -hw * 0.80, 1.8, 1.8, 0.8); R.ctx.fill();
+    rr(x1 - 7.4, hw * 0.80 - 1.8, 1.8, 1.8, 0.8); R.ctx.fill();
     R.ctx.fillStyle = '#e8352a';
-    R.ctx.beginPath(); R.ctx.arc(x0 + 2, 0, 2, 0, 6.2832); R.ctx.fill();
+    rr(x0 + 2, -hw * 0.92, 3, 3.4, 1.2); R.ctx.fill();
+    rr(x0 + 2, hw * 0.92 - 3.4, 3, 3.4, 1.2); R.ctx.fill();
+  }
+
+  /* --- дрон ----------------------------------------------------------------- */
+  function drawDrone(len, base) {
+    var hw = TS * 0.22, x0 = -len / 2, x1 = len / 2, i;
+    var rx = len * 0.40, ry = len * 0.42;             // X-рама: винты в четырёх углах
+    // усиленная тень: корпус висит в воздухе, тень мягче и шире
+    shadow(0, 7, len * 0.68, TS * 0.32, 0.22);
+    shadow(0, 4, len * 0.42, TS * 0.20, 0.16);
+
+    // четыре луча крест-накрест к мотор-гондолам
+    R.ctx.strokeStyle = shade(base, -0.28); R.ctx.lineWidth = 3.4;
+    R.ctx.beginPath(); R.ctx.moveTo(x0 + 4, -hw * 0.7); R.ctx.lineTo(-rx, -ry); R.ctx.stroke();
+    R.ctx.beginPath(); R.ctx.moveTo(x0 + 4, hw * 0.7); R.ctx.lineTo(-rx, ry); R.ctx.stroke();
+    R.ctx.beginPath(); R.ctx.moveTo(x1 - 4, -hw * 0.7); R.ctx.lineTo(rx, -ry); R.ctx.stroke();
+    R.ctx.beginPath(); R.ctx.moveTo(x1 - 4, hw * 0.7); R.ctx.lineTo(rx, ry); R.ctx.stroke();
+    // гондолы моторов по углам рамы
+    R.ctx.fillStyle = '#2b3240';
+    R.ctx.beginPath(); R.ctx.arc(-rx, -ry, 3.4, 0, 6.2832); R.ctx.fill();
+    R.ctx.beginPath(); R.ctx.arc(-rx, ry, 3.4, 0, 6.2832); R.ctx.fill();
+    R.ctx.beginPath(); R.ctx.arc(rx, -ry, 3.4, 0, 6.2832); R.ctx.fill();
+    R.ctx.beginPath(); R.ctx.arc(rx, ry, 3.4, 0, 6.2832); R.ctx.fill();
+
+    // пропеллеры: два вращающихся лезвия и размытый диск
+    var rot = G.t * 22;
+    var px = [-rx, -rx, rx, rx];
+    var py = [-ry, ry, -ry, ry];
+    for (i = 0; i < 4; i++) {
+      R.ctx.fillStyle = 'rgba(200,212,228,0.16)';
+      R.ctx.beginPath(); R.ctx.arc(px[i], py[i], 8.4, 0, 6.2832); R.ctx.fill();
+      R.ctx.save();
+      R.ctx.translate(px[i], py[i]);
+      R.ctx.rotate(rot + i * 0.9);
+      R.ctx.fillStyle = 'rgba(226,232,242,0.72)';
+      rr(-8.2, -1.1, 16.4, 2.2, 1.1); R.ctx.fill();
+      R.ctx.restore();
+    }
+
+    // центральный корпус
+    var g = R.ctx.createLinearGradient(0, -hw, 0, hw);
+    g.addColorStop(0, shade(base, 0.40));
+    g.addColorStop(0.4, base);
+    g.addColorStop(1, shade(base, -0.44));
+    rr(x0, -hw, len, hw * 2, 5);
+    R.ctx.fillStyle = g; R.ctx.fill();
+    R.ctx.strokeStyle = 'rgba(18,22,32,0.5)'; R.ctx.lineWidth = 1.1; R.ctx.stroke();
+    // крышка отсека и швы
+    vSeam(x0 + len * 0.30, hw, -hw + 1.5, hw - 1.5);
+    vSeam(x0 + len * 0.68, hw, -hw + 1.5, hw - 1.5);
+    R.ctx.fillStyle = shade(base, 0.18);
+    rr(x0 + len * 0.16, -hw * 0.74, len * 0.42, hw * 1.48, 3); R.ctx.fill();
+    // камера-«глаз» под носом
+    R.ctx.fillStyle = '#20242e';
+    R.ctx.beginPath(); R.ctx.arc(x1 - 5, 0, 4.2, 0, 6.2832); R.ctx.fill();
+    R.ctx.fillStyle = '#2c3f56';
+    R.ctx.beginPath(); R.ctx.arc(x1 - 5, 0, 2.6, 0, 6.2832); R.ctx.fill();
+    if (R.fine) {
+      R.ctx.fillStyle = 'rgba(169,201,232,0.9)';
+      R.ctx.beginPath(); R.ctx.arc(x1 - 4.2, -1.0, 1.1, 0, 6.2832); R.ctx.fill();
+      R.ctx.fillStyle = 'rgba(0,0,0,0.18)';
+      rr(x0 + len * 0.20, -hw * 0.60, len * 0.34, hw * 1.20, 2); R.ctx.fill();
+      R.ctx.fillStyle = 'rgba(255,255,255,0.22)';
+      R.ctx.fillRect(x0 + 2, -hw + 1.0, len - 4, 1.3);
+    }
+    // полозья-шасси под корпусом
+    R.ctx.fillStyle = '#20242e';
+    rr(x0 + 3, -hw - 2.2, len * 0.62, 2.2, 1); R.ctx.fill();
+    rr(x0 + 3, hw, len * 0.62, 2.2, 1); R.ctx.fill();
+
+    // навигационные огни: мигают через G.t
+    var st = Math.floor(G.t * 6) % 2 === 0;
+    var st2 = Math.floor(G.t * 9 + 1) % 2 === 0;
+    R.ctx.fillStyle = st ? '#46d67a' : '#5b6472';
+    R.ctx.beginPath(); R.ctx.arc(x0 + 6, -hw - 1.0, 1.8, 0, 6.2832); R.ctx.fill();
+    R.ctx.fillStyle = st ? '#ef4444' : '#5b6472';
+    R.ctx.beginPath(); R.ctx.arc(x0 + 6, hw + 1.0, 1.8, 0, 6.2832); R.ctx.fill();
+    R.ctx.fillStyle = st2 ? '#f2f5fa' : '#5b6472';
+    R.ctx.beginPath(); R.ctx.arc(x0 + 2, 0, 1.9, 0, 6.2832); R.ctx.fill();
+    if (R.fine) {
+      var ng = R.ctx.createRadialGradient(x0 + 2, 0, 1, x0 + 2, 0, 16);
+      ng.addColorStop(0, st2 ? 'rgba(255,255,255,0.30)' : 'rgba(0,0,0,0)');
+      ng.addColorStop(1, 'rgba(0,0,0,0)');
+      R.ctx.fillStyle = ng;
+      R.ctx.beginPath(); R.ctx.arc(x0 + 2, 0, 16, 0, 6.2832); R.ctx.fill();
+    }
+  }
+
+  /* --- самолёт на взлётной полосе ------------------------------------------- */
+  function drawPlane(len, base) {
+    var hw = TS * 0.30, x0 = -len / 2, x1 = len / 2, i;
+    var wsp = TS * 0.66;                              // размах крыла
+    var xW0 = -TS * 0.34, xW1 = TS * 0.30;
+
+    // широкие крылья со стреловидностью и законцовками
+    var wg = R.ctx.createLinearGradient(0, -wsp, 0, wsp);
+    wg.addColorStop(0, shade(base, 0.34));
+    wg.addColorStop(0.5, shade(base, 0.02));
+    wg.addColorStop(1, shade(base, -0.40));
+    R.ctx.beginPath();
+    R.ctx.moveTo(xW1, -hw * 0.7);
+    R.ctx.lineTo(xW0 - TS * 0.10, -wsp);
+    R.ctx.lineTo(xW0 - TS * 0.22, -wsp);
+    R.ctx.lineTo(xW0 + TS * 0.06, -hw * 0.7);
+    R.ctx.lineTo(xW0 + TS * 0.06, hw * 0.7);
+    R.ctx.lineTo(xW0 - TS * 0.22, wsp);
+    R.ctx.lineTo(xW0 - TS * 0.10, wsp);
+    R.ctx.lineTo(xW1, hw * 0.7);
+    R.ctx.closePath();
+    R.ctx.fillStyle = wg; R.ctx.fill();
+    R.ctx.strokeStyle = 'rgba(18,22,32,0.45)'; R.ctx.lineWidth = 1.1; R.ctx.stroke();
+    if (R.fine) {
+      R.ctx.save(); R.ctx.clip();
+      R.ctx.fillStyle = 'rgba(255,255,255,0.20)';     // блик по передней кромке крыла
+      R.ctx.fillRect(xW0 - TS * 0.22, -wsp, TS * 0.10, wsp * 2);
+      R.ctx.restore();
+      R.ctx.fillStyle = 'rgba(30,40,60,0.35)';        // закрылки и элероны
+      R.ctx.fillRect(xW0 - TS * 0.22, -wsp + 2, TS * 0.10, wsp * 0.42);
+      R.ctx.fillRect(xW0 - TS * 0.22, wsp * 0.58, TS * 0.10, wsp * 0.42);
+    }
+
+    // два двигателя на крыльях
+    R.ctx.fillStyle = shade(base, -0.24);
+    rr(xW0 - TS * 0.04, -wsp * 0.62, TS * 0.52, TS * 0.20, 3); R.ctx.fill();
+    rr(xW0 - TS * 0.04, wsp * 0.62 - TS * 0.20, TS * 0.52, TS * 0.20, 3); R.ctx.fill();
+    R.ctx.fillStyle = '#3a4150';
+    R.ctx.beginPath(); R.ctx.arc(xW0 + TS * 0.48, -wsp * 0.52, TS * 0.095, 0, 6.2832); R.ctx.fill();
+    R.ctx.beginPath(); R.ctx.arc(xW0 + TS * 0.48, wsp * 0.52, TS * 0.095, 0, 6.2832); R.ctx.fill();
+    if (R.fine) {
+      R.ctx.fillStyle = '#c9ced8';                    // хром воздухозаборников
+      R.ctx.beginPath(); R.ctx.arc(xW0 + TS * 0.48, -wsp * 0.52, TS * 0.055, 0, 6.2832); R.ctx.fill();
+      R.ctx.beginPath(); R.ctx.arc(xW0 + TS * 0.48, wsp * 0.52, TS * 0.055, 0, 6.2832); R.ctx.fill();
+    }
+
+    // хвостовое оперение: стабилизаторы и киль
+    R.ctx.fillStyle = shade(base, 0.08);
+    R.ctx.beginPath();
+    R.ctx.moveTo(x0 + TS * 0.54, -TS * 0.06);
+    R.ctx.lineTo(x0 + TS * 0.16, -TS * 0.44);
+    R.ctx.lineTo(x0 + TS * 0.02, -TS * 0.44);
+    R.ctx.lineTo(x0 + TS * 0.30, -TS * 0.06);
+    R.ctx.lineTo(x0 + TS * 0.30, TS * 0.06);
+    R.ctx.lineTo(x0 + TS * 0.02, TS * 0.44);
+    R.ctx.lineTo(x0 + TS * 0.16, TS * 0.44);
+    R.ctx.lineTo(x0 + TS * 0.54, TS * 0.06);
+    R.ctx.closePath();
+    R.ctx.fillStyle = shade(base, 0.10); R.ctx.fill();
+    R.ctx.strokeStyle = 'rgba(18,22,32,0.45)'; R.ctx.lineWidth = 1; R.ctx.stroke();
+
+    // фюзеляж с заострённым носом и скошенной кормой
+    var fg = R.ctx.createLinearGradient(0, -hw, 0, hw);
+    fg.addColorStop(0, shade(base, 0.38));
+    fg.addColorStop(0.32, shade(base, 0.06));
+    fg.addColorStop(0.72, base);
+    fg.addColorStop(1, shade(base, -0.42));
+    R.ctx.beginPath();
+    R.ctx.moveTo(x1 - TS * 0.34, -hw * 0.92);
+    R.ctx.quadraticCurveTo(x1, -hw * 0.5, x1, 0);
+    R.ctx.quadraticCurveTo(x1, hw * 0.5, x1 - TS * 0.34, hw * 0.92);
+    R.ctx.lineTo(x0 + TS * 0.22, hw);
+    R.ctx.lineTo(x0 + TS * 0.04, hw * 0.52);          // скошенная корма под киль
+    R.ctx.lineTo(x0 + TS * 0.04, -hw * 0.52);
+    R.ctx.lineTo(x0 + TS * 0.22, -hw);
+    R.ctx.closePath();
+    R.ctx.fillStyle = fg; R.ctx.fill();
+    R.ctx.strokeStyle = 'rgba(18,22,32,0.5)'; R.ctx.lineWidth = 1.1; R.ctx.stroke();
+
+    // киль по центру и мигалка на нём
+    R.ctx.fillStyle = shade(base, 0.16);
+    R.ctx.beginPath();
+    R.ctx.moveTo(x0 + TS * 0.34, -1.9);
+    R.ctx.lineTo(x0 + TS * 0.06, -1.9);
+    R.ctx.lineTo(x0 + TS * 0.02, 0);
+    R.ctx.lineTo(x0 + TS * 0.06, 1.9);
+    R.ctx.lineTo(x0 + TS * 0.34, 1.9);
+    R.ctx.closePath(); R.ctx.fill();
+    // кабина пилотов
+    vGlassQuad([x1 - TS * 0.30, -hw * 0.66, x1 - TS * 0.30, hw * 0.66,
+                x1 - TS * 0.62, hw * 0.76, x1 - TS * 0.62, -hw * 0.76]);
+    R.ctx.fillStyle = 'rgba(30,40,55,0.85)';
+    R.ctx.fillRect(x1 - TS * 0.64, -hw * 0.99, TS * 0.30, 2.4);
+    R.ctx.fillRect(x1 - TS * 0.64, hw * 0.99 - 2.4, TS * 0.30, 2.4);
+    // иллюминаторы вдоль пассажирской кабины (до хвоста, не заходя на остекление пилотов)
+    for (i = 0; i < 8; i++) {
+      var pxp = x1 - TS * 0.78 - i * 8.4;
+      R.ctx.fillStyle = 'rgba(30,40,55,0.85)';
+      R.ctx.beginPath(); R.ctx.arc(pxp, -hw * 0.72, 1.7, 0, 6.2832); R.ctx.fill();
+      R.ctx.beginPath(); R.ctx.arc(pxp, hw * 0.72, 1.7, 0, 6.2832); R.ctx.fill();
+      if (R.fine) {
+        R.ctx.fillStyle = 'rgba(255,255,255,0.35)';   // хром-окантовка иллюминаторов
+        R.ctx.beginPath(); R.ctx.arc(pxp - 2.4, -hw * 0.72, 0.9, 0, 6.2832); R.ctx.fill();
+        R.ctx.beginPath(); R.ctx.arc(pxp - 2.4, hw * 0.72, 0.9, 0, 6.2832); R.ctx.fill();
+        R.ctx.fillStyle = 'rgba(30,40,55,0.85)';
+      }
+    }
+    if (R.fine) {
+      R.ctx.fillStyle = 'rgba(255,255,255,0.18)';     // блик по всей длине фюзеляжа
+      R.ctx.fillRect(x0 + TS * 0.26, -hw * 0.52, len - TS * 0.7, 1.8);
+      R.ctx.fillStyle = 'rgba(0,0,0,0.12)';           // ливрея-полоса по борту
+      R.ctx.fillRect(x0 + TS * 0.26, hw * 0.40, len - TS * 0.7, 2.4);
+      R.ctx.fillRect(x0 + TS * 0.26, -hw * 0.62, len - TS * 0.7, 2.4);
+    }
+
+    // мигалка на киле
+    var bl = Math.floor(G.t * 8) % 2 === 0;
+    R.ctx.fillStyle = bl ? '#ef4444' : '#6b7280';
+    R.ctx.beginPath(); R.ctx.arc(x0 + TS * 0.10, 0, 2.4, 0, 6.2832); R.ctx.fill();
+    if (R.fine && bl) {
+      var bg2 = R.ctx.createRadialGradient(x0 + TS * 0.10, 0, 1, x0 + TS * 0.10, 0, 18);
+      bg2.addColorStop(0, 'rgba(255,80,80,0.34)');
+      bg2.addColorStop(1, 'rgba(0,0,0,0)');
+      R.ctx.fillStyle = bg2;
+      R.ctx.beginPath(); R.ctx.arc(x0 + TS * 0.10, 0, 18, 0, 6.2832); R.ctx.fill();
+    }
+    // бортовые огни на законцовках крыла
+    R.ctx.fillStyle = '#46d67a';
+    R.ctx.beginPath(); R.ctx.arc(xW0 - TS * 0.16, -wsp + 2, 1.8, 0, 6.2832); R.ctx.fill();
+    R.ctx.fillStyle = '#ef4444';
+    R.ctx.beginPath(); R.ctx.arc(xW0 - TS * 0.16, wsp - 2, 1.8, 0, 6.2832); R.ctx.fill();
+    // посадочные фары под носом
+    R.ctx.fillStyle = '#dde5f0';
+    rr(x1 - TS * 0.40, -hw * 0.42, 3, 3, 1.2); R.ctx.fill();
+    rr(x1 - TS * 0.40, hw * 0.42 - 3, 3, 3, 1.2); R.ctx.fill();
+    R.ctx.fillStyle = 'rgba(255,250,215,0.95)';
+    rr(x1 - TS * 0.38, -hw * 0.34, 1.8, 1.8, 0.8); R.ctx.fill();
+    rr(x1 - TS * 0.38, hw * 0.34 - 1.8, 1.8, 1.8, 0.8); R.ctx.fill();
   }
 
   /* --- кастомизация: шапки, следы, питомцы --------------------------------- */
@@ -880,7 +1838,37 @@
     R.ctx.translate(x, y);
     R.ctx.scale(dir, 1);
 
-    if (kind === 'moto') {
+    if (kind === 'snowplow') {
+      vShadowBox(len, CAR_W + 14);
+      drawSnowplow(len, base);
+    } else if (kind === 'firetruck') {
+      vShadowBox(len, CAR_W + 4);
+      drawFireTruck(len, base);
+    } else if (kind === 'icecream') {
+      vShadowBox(len, CAR_W + 2);
+      drawIceCream(len, base);
+    } else if (kind === 'limo') {
+      vShadowBox(len, CAR_W + 2);
+      drawLimo(len, base);
+    } else if (kind === 'hearse') {
+      vShadowBox(len, CAR_W + 3);
+      drawHearse(len, base);
+    } else if (kind === 'garbage') {
+      vShadowBox(len, CAR_W + 4);
+      drawGarbage(len, base);
+    } else if (kind === 'tow') {
+      vShadowBox(len, CAR_W + 3);
+      drawTow(len, base);
+    } else if (kind === 'f1') {
+      vShadowBox(len, TS * 0.72);
+      drawF1(len, base);
+    } else if (kind === 'drone') {
+      vShadowBox(len, TS * 0.68);
+      drawDrone(len, base);
+    } else if (kind === 'plane') {
+      vShadowBox(len, TS * 1.16);
+      drawPlane(len, base);
+    } else if (kind === 'moto') {
       vShadowBox(len + 6, TS * 0.30);
       drawMoto(len, base);
     } else if (kind === 'tractor') {
@@ -1135,7 +2123,8 @@
      это в разы дешевле, чем заново собирать кузов из десятков примитивов.
      Модели с анимацией (мигалки полиции и скорой, наклон мотоцикла) остаются
      живыми — их немного, и они дешёвые. */
-  var LIVE_KINDS = { police: 1, ambulance: 1, moto: 1 };
+  var LIVE_KINDS = { police: 1, ambulance: 1, moto: 1, snowplow: 1, firetruck: 1,
+    garbage: 1, tow: 1, drone: 1, plane: 1, limo: 1 };
 
   function vehicleSprite(kind, color, dir) {
     var spec = KIND[kind] || KIND.car;

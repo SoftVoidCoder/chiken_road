@@ -20,7 +20,7 @@
   'use strict';
 
   var C = CC.C, R = CC.R, U = CC.util, G = CC.G, pl = CC.pl;
-  var TS = C.TS, COLS = C.COLS, FIELD_HALF = C.FIELD_HALF;
+  var TS = C.TS;
   var clamp = U.clamp, rnd = U.rnd, pick = U.pick, hash01 = U.hash01;
   var colX = U.colX, rowY = U.rowY;
   var TH = CC.themes;
@@ -65,7 +65,7 @@
     // Лёд: часть клеток земли скользит. Плотность умеренная: если льда
     // слишком много, курица едет почти без участия игрока.
     if (has('ice') && row.type === 'grass') {
-      for (i = 0; i < COLS; i++) {
+      for (i = 0; i < C.COLS; i++) {
         if (hash01(row.r * 91 + i * 7) < 0.32) {
           row.ice = row.ice || {};
           row.ice[i] = 1;
@@ -75,14 +75,14 @@
     // Грязь: замедляет прыжок
     if (has('mud') && row.type === 'grass') {
       row.mud = {};
-      for (i = 0; i < COLS; i++) {
+      for (i = 0; i < C.COLS; i++) {
         if (hash01(row.r * 53 + i * 11) < 0.4) { row.mud[i] = 1; }
       }
     }
     // Тоннели: клетка переносит на несколько рядов вперёд
     if (has('tunnel') && row.type === 'grass' && Math.random() < 0.35) {
       row.tunnel = {};
-      var tc = (Math.random() * COLS) | 0;
+      var tc = (Math.random() * C.COLS) | 0;
       row.tunnel[tc] = 4 + ((Math.random() * 3) | 0);
     }
     // Лазерные ворота: перекрывают дорогу по циклу
@@ -115,7 +115,7 @@
     }
     // Краны и карусели: движущиеся препятствия
     if (has('crane') && row.type === 'road' && Math.random() < 0.3) {
-      row.crane = { x: -FIELD_HALF - TS, dir: Math.random() < 0.5 ? 1 : -1, speed: 60 + Math.random() * 50, arm: 14 };
+      row.crane = { x: -R.fieldHalf - TS, dir: Math.random() < 0.5 ? 1 : -1, speed: 60 + Math.random() * 50, arm: 14 };
     }
     if (has('carousel') && row.type === 'grass' && !row.crane && Math.random() < 0.25) {
       row.carousel = { angle: Math.random() * 6.28, speed: 1.4 + Math.random() * 0.9, R: TS * 0.9 };
@@ -134,18 +134,18 @@
     }
     // Вулкан: гейзеры
     if (has('geyser') && row.type === 'grass' && Math.random() < 0.22) {
-      row.geyser = { col: (Math.random() * COLS) | 0, t: rnd(0, 2.5), period: 3 + Math.random() * 2 };
+      row.geyser = { col: (Math.random() * C.COLS) | 0, t: rnd(0, 2.5), period: 3 + Math.random() * 2 };
     }
     // Зоопарк: вольеры перекрывают клетки
     if (has('enclosure') && row.type === 'grass') {
-      var ec = (Math.random() * COLS) | 0;
+      var ec = (Math.random() * C.COLS) | 0;
       row.obstacles[ec] = 'fence';
-      if (Math.random() < 0.5 && ec + 1 < COLS) { row.obstacles[ec + 1] = 'fence'; }
+      if (Math.random() < 0.5 && ec + 1 < C.COLS) { row.obstacles[ec + 1] = 'fence'; }
     }
     // Каньон: узкие мосты — часть клеток проваливается
     if (has('narrow') && row.type === 'grass') {
       row.holes = {};
-      for (i = 0; i < COLS; i++) {
+      for (i = 0; i < C.COLS; i++) {
         if (hash01(row.r * 37 + i * 19) < 0.22) {
           row.holes[i] = 1;
           row.obstacles[i] = 'pit';       // шагать в провал нельзя
@@ -180,7 +180,7 @@
     if (has('lightning')) {
       if (!st.bolt) {
         if (Math.random() < dt * 0.35 && pl.alive) {
-          st.bolt = { col: (Math.random() * COLS) | 0, t: 0, phase: 0.9 };
+          st.bolt = { col: (Math.random() * C.COLS) | 0, t: 0, phase: 0.9 };
         }
       } else {
         st.bolt.t += dt;
@@ -201,7 +201,7 @@
     if (has('meteor')) {
       if (!st.meteor) {
         if (Math.random() < dt * 0.3 && pl.alive) {
-          st.meteor = { col: (Math.random() * COLS) | 0, t: 0, phase: 1.3 };
+          st.meteor = { col: (Math.random() * C.COLS) | 0, t: 0, phase: 1.3 };
         }
       } else {
         st.meteor.t += dt;
@@ -228,7 +228,7 @@
       var row = G.rows[k];
       if (row.crane) {
         row.crane.x += row.crane.speed * row.crane.dir * dt;
-        var lim = FIELD_HALF + TS * 2;
+        var lim = R.fieldHalf + TS * 2;
         if (row.crane.x > lim) { row.crane.dir = -1; }
         if (row.crane.x < -lim) { row.crane.dir = 1; }
       }
@@ -331,7 +331,7 @@
     // карусель сбивает с клетки
     if (row.carousel && pl.alive) {
       var ang = Math.atan2(0, 0);
-      var dist = Math.abs(pl.px - colX(Math.round((COLS - 1) / 2)));
+      var dist = Math.abs(pl.px - colX(Math.round((C.COLS - 1) / 2)));
       if (Math.sin(row.carousel.angle) > 0.9 && dist < row.carousel.R * 1.2) {
         CC.game.die('carousel');
       }
@@ -366,8 +366,8 @@
           ctx.strokeStyle = 'rgba(255,70,110,0.85)';
           ctx.lineWidth = 2.5;
           ctx.beginPath();
-          ctx.moveTo(-FIELD_HALF, y);
-          ctx.lineTo(FIELD_HALF, y);
+          ctx.moveTo(-R.fieldHalf, y);
+          ctx.lineTo(R.fieldHalf, y);
           ctx.stroke();
           ctx.strokeStyle = 'rgba(255,150,180,0.35)';
           ctx.lineWidth = 7;
@@ -379,7 +379,7 @@
         var cx = row.crane.x;
         // рельса крана и тележка с противовесом
         ctx.fillStyle = 'rgba(40,44,52,0.35)';
-        ctx.fillRect(-FIELD_HALF - TS, y - TS * 0.46, FIELD_HALF * 2 + TS * 2, 3);
+        ctx.fillRect(-R.fieldHalf - TS, y - TS * 0.46, R.fieldHalf * 2 + TS * 2, 3);
         ctx.fillStyle = '#e0a11c';
         ctx.fillRect(cx - row.crane.arm, y - 5, row.crane.arm * 2, 10);
         ctx.fillStyle = '#8b6a12';
@@ -389,7 +389,7 @@
       }
       if (row.carousel) {
         y = rowY(row.r);
-        var cxx = colX(Math.round((COLS - 1) / 2));
+        var cxx = colX(Math.round((C.COLS - 1) / 2));
         ctx.save();
         ctx.translate(cxx, y);
         ctx.rotate(row.carousel.angle);
