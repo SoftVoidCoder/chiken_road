@@ -277,7 +277,13 @@
     cv.height = Math.max(1, Math.ceil(h * k));
     var g = cv.getContext('2d');
     if (g.setTransform) { g.setTransform(k, 0, 0, k, 0, 0); }
-    withCtx(g, function () { draw(g); });
+    // ВАЖНО: ряды рисуются в мировых координатах вокруг нуля, а у холста начало
+    // в левом верхнем углу. Без переноса в центр половина ряда уходила бы за
+    // край спрайта, и покрытие съезжало влево — поле выглядело разорванным.
+    withCtx(g, function () {
+      g.translate(w / 2, h / 2);
+      draw(g);
+    });
     s = { cv: cv, w: w, h: h, k: k };
     rowSprites[key] = s; rowCount++;
     return s;

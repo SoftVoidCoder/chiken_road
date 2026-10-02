@@ -8,7 +8,7 @@
 <!-- 2D-спрайты рисуются на Canvas процедурно: внешних картинок и звуков нет.
      SDK Яндекс Игр подключается асинхронно из js/platform.js, а не блокирующим тегом. -->
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%237ec850'/%3E%3Ccircle cx='16' cy='18' r='8' fill='%23fff'/%3E%3Ccircle cx='16' cy='10' r='5' fill='%23fff'/%3E%3Cpath d='M13 6l3-4 3 4z' fill='%23f5a623'/%3E%3Ccircle cx='14' cy='10' r='1.2' fill='%2320242e'/%3E%3Ccircle cx='18' cy='10' r='1.2' fill='%2320242e'/%3E%3C/svg%3E">
-<link rel="stylesheet" href="css/style.css">
+<link rel="stylesheet" href="css/style.css?v=6">
 </head>
 <body>
 <canvas id="game"></canvas>
@@ -135,23 +135,23 @@
 <!-- Порядок подключения важен: ядро создаёт шину CC и кэши, i18n идёт до platform
      (он подмешивает контентные строки), draw-world до draw-actors (тот берёт у него
      примитивы), а main запускает цикл последним. Сборщик не нужен. -->
-<script src="js/core.js"></script>
+<script src="js/core.js?v=6"></script>
 <script src="js/i18n.js"></script>
-<script src="js/themes.js"></script>
-<script src="js/skins.js"></script>
-<script src="js/settings.js"></script>
-<script src="js/platform.js"></script>
-<script src="js/meta.js"></script>
-<script src="js/audio.js"></script>
-<script src="js/draw-world.js"></script>
-<script src="js/draw-decor.js"></script>
-<script src="js/draw-actors.js"></script>
-<script src="js/world.js"></script>
-<script src="js/mechanics.js"></script>
-<script src="js/gameplay.js"></script>
-<script src="js/render.js"></script>
-<script src="js/input.js"></script>
-<script src="js/ui.js"></script>
-<script src="js/main.js"></script>
+<script src="js/themes.js?v=6"></script>
+<script src="js/skins.js?v=6"></script>
+<script src="js/settings.js?v=6"></script>
+<script src="js/platform.js?v=6"></script>
+<script src="js/meta.js?v=6"></script>
+<script src="js/audio.js?v=6"></script>
+<script src="js/draw-world.js?v=6"></script>
+<script src="js/draw-decor.js?v=6"></script>
+<script src="js/draw-actors.js?v=6"></script>
+<script src="js/world.js?v=6"></script>
+<script src="js/mechanics.js?v=6"></script>
+<script src="js/gameplay.js?v=6"></script>
+<script src="js/render.js?v=6"></script>
+<script src="js/input.js?v=6"></script>
+<script src="js/ui.js?v=6"></script>
+<script src="js/main.js?v=6"></script>
 </body>
 </html>
