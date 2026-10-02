@@ -36,6 +36,7 @@
     skinsHint: $('tSkinsHint'), diffHint: $('tDiffHint'),
     pScore: $('pScore'), pCoins: $('pCoins'), pDiff: $('pDiff'),
     pillCombo: $('pillCombo'), vCombo: $('vCombo'), pillBoost: $('pillBoost'), vBoost: $('vBoost'),
+    vRank: $('vRank'), vLevel: $('vLevel'),
     hint: $('hintEagle')
   };
   var lastHUD = { score: -1, best: -1, coins: -1 };
@@ -55,6 +56,16 @@
     if (el.pillBoost) {
       el.pillBoost.hidden = !G.boostLabel;
       if (el.vBoost) { el.vBoost.textContent = G.boostLabel || ''; }
+    }
+    // Ранг аккаунта: значок и уровень рядом с очками
+    if (el.vRank) {
+      var info = META.levelInfo ? META.levelInfo() : null;
+      if (info && info.level !== el.vRank._lvl) {
+        el.vRank._lvl = info.level;
+        el.vRank.textContent = info.rank === 'diamond' ? '💎' : info.rank === 'gold' ? '🥇' :
+          info.rank === 'silver' ? '🥈' : '🥉';
+        if (el.vLevel) { el.vLevel.textContent = String(info.level); }
+      }
     }
   }
 
