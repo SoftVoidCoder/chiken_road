@@ -380,6 +380,8 @@
     },
     // панель паузы показывает, с чем игрок остановился
     pause: function () {
+      // в паузе показываем бусты: из запаса или за рекламу
+      if (CC.screens && CC.screens.buildBoosts) { CC.screens.buildBoosts('pauseBoostRow', false); }
       if (el.pScore) { el.pScore.textContent = String(G.score); }
       if (el.pCoins) { el.pCoins.textContent = String(G.coins); }
       if (el.pDiff) { el.pDiff.textContent = Pl.t(diffKey(G.diffId)); }

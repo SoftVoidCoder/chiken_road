@@ -572,6 +572,18 @@ function step(title, fn) {
     tick(10);
   });
 
+  step('бусты можно применить в паузе', () => {
+    releaseAll();
+    let tries = 0;
+    while (G.G.state !== 'playing' && tries++ < 8) { G.start(); tick(5); }
+    G.pause();
+    assert(G.G.state === 'paused', 'пауза не включилась: ' + G.G.state);
+    assert(G.boost('magnet') === true, 'буст не применился в паузе');
+    assert(G.boostState().id === 'magnet', 'буст не отмечен активным: ' + G.boostState().id);
+    G.pause();
+    G.G.boost = null; G.G.boostLeft = 0; G.G.boostLabel = '';
+  });
+
   step('магнит подбирает монеты рядом', () => {
     releaseAll();
     G.start();

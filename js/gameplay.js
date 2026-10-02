@@ -474,7 +474,9 @@
 
   // Активация буста: вызывается из интерфейса (за монеты или за рекламу)
   function activateBoost(id) {
-    if (G.state !== 'playing' || !pl.alive) { return false; }
+    // Буст можно включить и в паузе: игрок как раз там решает, что применить,
+    // а таймер буста идёт только во время забега.
+    if ((G.state !== 'playing' && G.state !== 'paused') || !pl.alive) { return false; }
     var spec = CC.skins.boost(id);
     if (!spec || spec.id !== id) { return false; }
     if (id === 'shield') {

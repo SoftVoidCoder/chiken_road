@@ -131,6 +131,7 @@
     G.hat = G.ownedHats.indexOf(data.hat) >= 0 ? data.hat : 'none';
     G.voice = G.ownedVoices.indexOf(data.voice) >= 0 ? data.voice : 'classic';
     G.adsDisabled = !!data.adsDisabled;
+    G.boostStock = data.stock && typeof data.stock === 'object' ? data.stock : {};
     G.tutorialDone = !!data.tutorialDone;
     if (CC.platform) { CC.platform.adsDisabled = G.adsDisabled; }
     UI.setDiff(DIFFS[data.diff] ? data.diff : 'normal', true);

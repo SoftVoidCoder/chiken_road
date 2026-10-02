@@ -174,6 +174,7 @@
     pet: 'none', trail: 'none', hat: 'none', voice: 'classic',
     ownedPets: ['none'], ownedTrails: ['none'], ownedHats: ['none'], ownedVoices: ['classic'],
     adsDisabled: false, passPremium: false, tutorialDone: false,
+    boostStock: {},          // купленные заранее бусты
     themeId: 'meadow',            // активный биом
     daily: false,                  // идёт испытание дня
     night: 0,                      // 0..1 — насколько сейчас темно
@@ -215,6 +216,7 @@
       ownedPets: G.ownedPets.slice(), ownedTrails: G.ownedTrails.slice(),
       ownedHats: G.ownedHats.slice(), ownedVoices: G.ownedVoices.slice(),
       adsDisabled: G.adsDisabled ? 1 : 0, tutorialDone: G.tutorialDone ? 1 : 0,
+      boostStock: G.boostStock || {},
       meta: CC.meta && CC.meta.toSave ? CC.meta.toSave() : null,
       settings: CC.settings && CC.settings.toSave ? CC.settings.toSave() : null
     };

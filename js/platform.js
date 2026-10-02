@@ -745,6 +745,7 @@
         hat: ls('cc_hat') || '', voice: ls('cc_voice') || '',
         owned: parseList(ls('cc_owned')),
         adsOff: ls('cc_ads_off') === '1',
+        stock: (function () { try { return JSON.parse(ls('cc_stock') || 'null'); } catch (e) { return null; } })(),
         meta: null,
         settings: null
       };
@@ -753,7 +754,7 @@
 
       if (!P.player) { return Promise.resolve(local); }
       return P.player.getData(['best', 'coins', 'bests', 'skins', 'skin', 'diff', 'meta', 'settings',
-        'pet', 'trail', 'hat', 'voice', 'owned', 'adsOff']).then(function (d) {
+        'pet', 'trail', 'hat', 'voice', 'owned', 'adsOff', 'stock']).then(function (d) {
         d = d || {};
         var rBests = (d.bests && typeof d.bests === 'object') ? d.bests : {};
         var bests = {
@@ -778,6 +779,7 @@
           pet: d.pet || '', trail: d.trail || '', hat: d.hat || '', voice: d.voice || '',
           owned: Array.isArray(d.owned) ? d.owned : [],
           adsOff: !!d.adsOff,
+          stock: d.stock && typeof d.stock === 'object' ? d.stock : null,
           // мета-прогресс: берём более «продвинутый» из двух сохранений
           meta: pickMeta(local.meta, d.meta),
           settings: local.settings || d.settings || null
@@ -822,6 +824,10 @@
       if (data.owned) {
         payload.owned = data.owned.slice();
         ls('cc_owned', payload.owned.join(','));
+      }
+      if (data.boostStock) {
+        payload.stock = data.boostStock;
+        try { ls('cc_stock', JSON.stringify(data.boostStock)); } catch (e) {}
       }
       if (data.adsDisabled !== undefined) {
         payload.adsOff = !!data.adsDisabled;
