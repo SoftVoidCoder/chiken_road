@@ -30,7 +30,7 @@
     fieldHalf: 312,     // полуширина игрового поля в мировых пикселях
     worldHalf: 500,     // полуширина видимой области: поле + запас на края
     camX: 0, camY: 0, camTargetY: 0,
-    shadows: true, vignette: true, rowCache: true, spritesOn: true, particlesMax: 260,
+    shadows: true, vignette: false, rowCache: true, spritesOn: true, particlesMax: 260,
     quality: 2, fps: 60
   };
   CC.util = {};
@@ -339,7 +339,7 @@
   function applyQuality() {
     var q = R.quality;
     R.shadows = q > 0;
-    R.vignette = q > 1;
+    R.vignette = false;   // затемнение по краям выключено: оно затемняло углы экрана
     R.rowCache = q > 0;
     R.particlesMax = q > 1 ? 260 : (q > 0 ? 140 : 70);
     R.fine = q > 1 && R.scale > 0.62;
