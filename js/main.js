@@ -132,6 +132,16 @@
     },
     kinds: function () { return Object.keys(C.KIND); },
 
+    /* бусты и режимы */
+    boost: function (id) { return GM.activateBoost(id); },
+    magnet: function () { GM.magnetTick(); },
+    boostState: function () { return { id: G.boost, left: G.boostLeft, shield: G.shield, label: G.boostLabel }; },
+    combo: function () { return { combo: G.combo, best: G.comboBest }; },
+    mode: function () { return G.modeId; },
+    setMode: function (id) { G.modeId = id; return G.modeId; },
+    daily: function (on) { G.daily = !!on; return G.daily; },
+    night: function () { return G.night; },
+
     /* сложность */
     diffs: function () { return C.DIFF_ORDER.slice(); },
     diff: function () { return G.diffId; },

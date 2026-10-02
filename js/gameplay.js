@@ -67,7 +67,10 @@
     G.boostsUsed = 0; G.noStopBest = 0; G.ghostBeaten = false;
     G.ghostTrack = []; G.ghostNext = 0;
     if (MECH) { MECH.reset(); }
+    if (W.resetSeed) { W.resetSeed(); }
     G.slide = null; G.wind = null; G.tunnel = null; G.tunnelLock = false; G.mudSlow = 0;
+    G.combo = 0; G.comboBest = 0; G.boost = null; G.boostLeft = 0; G.shield = 0; G.boostLabel = '';
+    G.night = 0; G.lastDc = 0; G.lastDr = 0;
     pl.px = colX((COLS - 1) / 2); pl.py = rowY(0);
     pl.hop = null; pl.log = null; pl.facing = 'up';
     pl.idle = 0; pl.alive = true; pl.holdTimer = 0;
@@ -83,6 +86,9 @@
     // сообщаем мете контекст забега: от него зависят задания «поиграй в биоме»
     if (META && META.onRunStart) {
       META.onRunStart({ biome: G.themeId, mode: G.modeId, diff: G.diffId });
+      // Мягкая подстройка: новичку поток чуть реже, опытному — чуть плотнее
+      var st = META.stats();
+      G.ddaMul = st.runs < 5 ? 1.15 : (st.best > 60 ? 0.95 : 1);
     }
     G.runStart = (window.performance && performance.now) ? performance.now() : Date.now();
     UI.showOnly(null);
@@ -105,6 +111,7 @@
       burst(colX(tc), rowY(tr) + TS * 0.3, 4, 'rgba(255,255,255,0.75)', 'dust', 60);
       return false;
     }
+    G.lastDc = dc; G.lastDr = dr;
     pl.hop = { fx: pl.px, fy: pl.py, tx: colX(tc), ty: rowY(tr), t: 0, dc: dc, dr: dr };
     pl.facing = dr > 0 ? 'up' : (dr < 0 ? 'down' : (dc > 0 ? 'right' : 'left'));
     pl.log = null;
@@ -149,14 +156,24 @@
     if (obj && obj.coins && obj.coins.indexOf(playerCol()) >= 0) {
       var idx = obj.coins.indexOf(playerCol());
       obj.coins.splice(idx, 1);
-      G.coins++; G.totalCoins++;
-      popup(pl.px, pl.py - TS * 0.4, '+1', '#ffd75e');
+      var gain = 1 + Math.min(4, Math.floor(G.combo / 10));
+      if (G.boost === 'double') { gain *= 2; }
+      if (G.modeId === 'extreme') { gain *= 2; }
+      G.coins += gain; G.totalCoins += gain;
+      popup(pl.px, pl.py - TS * 0.4, '+' + gain, '#ffd75e');
       burst(pl.px, pl.py, 10, '#ffd75e', 'sparkle', 110);
       Sound.coin();
       UI.syncHUD();
     }
 
     if (MECH) { MECH.onLand(obj, obj); }
+
+    // Комбо: серия шагов вперёд без остановок множит монеты
+    if (G.lastDr > 0) {
+      G.combo++;
+      if (G.combo > G.comboBest) { G.comboBest = G.combo; }
+      if (G.combo % 10 === 0) { popup(pl.px, pl.py - TS * 0.9, Pl.t('combo') + ' ' + G.combo, '#ffd75e'); }
+    }
 
     if (row > G.maxRow) {
       G.maxRow = row;
@@ -199,6 +216,16 @@
 
   function die(reason) {
     if (!pl.alive || G.state !== 'playing') { return; }
+    // щит из буста принимает смерть на себя
+    if (G.shield > 0) {
+      G.shield = 0;
+      G.invuln = 1.6;
+      G.shake = 10;
+      burst(pl.px, pl.py, 26, '#8fd3ff', 'sparkle', 150);
+      popup(pl.px, pl.py - TS * 0.8, Pl.t('boost_shield'), '#8fd3ff');
+      Sound.record();
+      return;
+    }
     pl.alive = false;
     G.deathReason = reason;
     G.deathT = 0;
@@ -298,6 +325,14 @@
       }
 
       if (G.mudSlow > 0) { G.mudSlow -= dt; }
+      // Бусты: общий таймер и магнит монет
+      if (G.boostLeft > 0) {
+        G.boostLeft -= dt;
+        if (G.boostLeft <= 0) { G.boost = null; G.boostLabel = ''; UI.syncHUD(); }
+      }
+      if (G.boost === 'magnet' && pl.alive) { magnetTick(); }
+      // комбо сгорает, если стоять на месте
+      if (!pl.hop && !pl.log && pl.idle > 1.2 && G.combo) { G.combo = 0; }
       // лёд: после приземления курицу проносит ещё на клетку
       if (pl.alive && !pl.hop && G.slide) {
         var sl = G.slide;
@@ -342,6 +377,11 @@
       G.ghostNext = G.runTime + 0.3;
       G.ghostTrack.push({ r: playerRow(), c: playerCol(), t: G.runTime });
     }
+
+    // Смена дня и ночи: каждые 30 рядов темнеет и снова светлеет
+    var dayPhase = (G.maxRow % 60) / 60;
+    G.night = dayPhase > 0.5 ? Math.min(1, (dayPhase - 0.5) * 2) : 0;
+    if (G.modeId === 'night') { G.night = Math.max(G.night, 0.75); }
 
     R.camTargetY = camTargetFor(pl.py);
     if (Math.abs(R.camTargetY - R.camY) > TS * 6) { R.camY = R.camTargetY; }
@@ -410,6 +450,46 @@
     R.camY = R.camTargetY = camTargetFor(pl.py);
   }
 
+  // Магнит: подбирает монеты в радиусе двух клеток вокруг курицы
+  function magnetTick() {
+    var r = playerRow(), c = playerCol();
+    for (var dr2 = -1; dr2 <= 1; dr2++) {
+      var row = G.rows[r + dr2];
+      if (!row || !row.coins || !row.coins.length) { continue; }
+      for (var i = row.coins.length - 1; i >= 0; i--) {
+        if (Math.abs(row.coins[i] - c) <= 2) {
+          var cx = colX(row.coins[i]);
+          row.coins.splice(i, 1);
+          var gain2 = G.boost === 'double' ? 2 : 1;
+          G.coins += gain2; G.totalCoins += gain2;
+          burst(cx, rowY(r + dr2), 8, '#ffd75e', 'sparkle', 90);
+          Sound.coin();
+          UI.syncHUD();
+        }
+      }
+    }
+  }
+
+  // Активация буста: вызывается из интерфейса (за монеты или за рекламу)
+  function activateBoost(id) {
+    if (G.state !== 'playing' || !pl.alive) { return false; }
+    var spec = CC.skins.boost(id);
+    if (!spec || spec.id !== id) { return false; }
+    if (id === 'shield') {
+      G.shield = 1;
+    } else {
+      G.boost = id;
+      G.boostLeft = spec.dur || 8;
+    }
+    G.boostLabel = Pl.t(spec.name);
+    G.boostsUsed++;
+    if (META && META.onBoost) { META.onBoost(); }
+    Sound.record();
+    popup(pl.px, pl.py - TS, G.boostLabel, '#8fd3ff');
+    UI.syncHUD();
+    return true;
+  }
+
   function findSafeRow(from) {
     var r;
     for (r = from; r <= from + 10; r++) { if (G.rows[r] && G.rows[r].type === 'grass') { return r; } }
@@ -448,6 +528,7 @@
     reset: reset, startGame: startGame, tryMove: tryMove, logUnder: logUnder,
     onLand: onLand, edgeOut: edgeOut, checkHits: checkHits, die: die,
     updateEagle: updateEagle, moveWorld: moveWorld, update: update,
-    gameOver: gameOver, findSafeRow: findSafeRow, freeCol: freeCol, revive: revive
+    gameOver: gameOver, findSafeRow: findSafeRow, freeCol: freeCol, revive: revive,
+    activateBoost: activateBoost, magnetTick: magnetTick
   });
 })(window.CC);

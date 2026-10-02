@@ -27,6 +27,10 @@
   #hud .pill b{font-size:19px;font-variant-numeric:tabular-nums}
   #hud .pill.big{padding:6px 22px}
   #hud .pill.big b{font-size:34px;letter-spacing:-.02em;text-shadow:0 2px 0 rgba(0,0,0,.35)}
+  #hud .top2{display:flex;justify-content:center;gap:8px;margin-top:8px}
+  #hud .pill.mini{flex-direction:row;align-items:center;gap:6px;padding:5px 12px;border-radius:13px;min-width:0}
+  #hud .pill.mini b{font-size:15px}
+  #hud .pill.boost{background:rgba(60,90,140,.6);border-color:rgba(150,210,255,.35)}
   #hud .bot{position:absolute;right:12px;bottom:calc(12px + env(safe-area-inset-bottom));display:flex;gap:9px;pointer-events:auto}
   .ibtn{width:44px;height:44px;border:1px solid rgba(255,255,255,.16);border-radius:14px;cursor:pointer;
     background:rgba(11,20,32,.55);backdrop-filter:blur(8px);color:#eaf2ff;font-size:17px;line-height:1;

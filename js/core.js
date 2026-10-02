@@ -165,6 +165,9 @@
     diffId: 'normal', bests: { easy: 0, normal: 0, hard: 0 },
     skin: 'classic', skins: ['classic'],
     themeId: 'meadow',            // активный биом
+    daily: false,                  // идёт испытание дня
+    night: 0,                      // 0..1 — насколько сейчас темно
+    ddaMul: 1,                     // мягкая подстройка сложности под игрока
     modeId: 'classic',            // активный режим
     rows: {}, genUntil: MIN_ROW - 1, pattern: null,
     particles: [], popups: [],
@@ -174,7 +177,7 @@
     hintShown: false,
     combo: 0, comboTimer: 0, comboBest: 0,
     boostsUsed: 0, noStopBest: 0, ghostBeaten: false, ghostTrack: [], ghostNext: 0,
-    boost: null, boostLeft: 0, shield: 0,
+    boost: null, boostLeft: 0, shield: 0, boostLabel: '',
     weather: null, weatherT: 0
   };
   CC.G = G;

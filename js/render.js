@@ -13,7 +13,7 @@
   var C = CC.C, R = CC.R, U = CC.util, G = CC.G, pl = CC.pl, IN = CC.in;
   var TS = C.TS, COLS = C.COLS, FIELD_HALF = C.FIELD_HALF;
   var colX = U.colX, rowY = U.rowY, hash01 = U.hash01, clamp = U.clamp;
-  var D = CC.draw, A = CC.actors, TH = CC.themes, MECH = CC.mech;
+  var D = CC.draw, A = CC.actors, TH = CC.themes, MECH = CC.mech, META = CC.meta;
 
   /* --- кэши кадра ----------------------------------------------------------
      Покрытие ряда (земля, дорога) не меняется, пока ряд жив: рисуем его один
@@ -147,6 +147,26 @@
       }
     }
     R.ctx.globalAlpha = 1;
+
+    // призрак рекорда: полупрозрачная курица повторяет лучший забег
+    if (META && META.ghostTrack && G.state === 'playing' && pl.alive) {
+      var track = META.ghostTrack();
+      if (track && track.length > 3) {
+        var gPrev = null;
+        for (var gi = 0; gi < track.length; gi++) {
+          if (track[gi].t <= G.runTime) { gPrev = track[gi]; } else { break; }
+        }
+        if (gPrev) {
+          R.ctx.globalAlpha = 0.32;
+          A.drawChicken(colX(gPrev.c), rowY(gPrev.r), null, 'up', false, G.t);
+          R.ctx.globalAlpha = 1;
+          // обгон призрака отмечаем один раз за забег
+          if (G.maxRow > (META.ghostScore() || 0) && !G.ghostBeaten && META.ghostScore() > 0) {
+            G.ghostBeaten = true;
+          }
+        }
+      }
+    }
 
     // курица
     if (G.state !== 'loading') {

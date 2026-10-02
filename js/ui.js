@@ -32,6 +32,7 @@
     btnMenuMaps: $('btnMenuMaps'), btnThemesClose: $('btnThemesClose'), themeGrid: $('themeGrid'),
     skinsHint: $('tSkinsHint'), diffHint: $('tDiffHint'),
     pScore: $('pScore'), pCoins: $('pCoins'), pDiff: $('pDiff'),
+    pillCombo: $('pillCombo'), vCombo: $('vCombo'), pillBoost: $('pillBoost'), vBoost: $('vBoost'),
     hint: $('hintEagle')
   };
   var lastHUD = { score: -1, best: -1, coins: -1 };
@@ -42,6 +43,16 @@
     if (force || best !== lastHUD.best) { if (el.best) { el.best.textContent = String(best); } lastHUD.best = best; }
     var shown = G.state === 'playing' ? G.coins : G.totalCoins;
     if (force || shown !== lastHUD.coins) { if (el.coins) { el.coins.textContent = String(shown); } lastHUD.coins = shown; }
+    // Ход забега: комбо и активный буст видны прямо в игре
+    var comboOn = G.state === 'playing' && G.combo >= 3;
+    if (el.pillCombo) {
+      el.pillCombo.hidden = !comboOn;
+      if (comboOn && el.vCombo) { el.vCombo.textContent = '×' + (1 + Math.min(4, Math.floor(G.combo / 10))) + '  ' + G.combo; }
+    }
+    if (el.pillBoost) {
+      el.pillBoost.hidden = !G.boostLabel;
+      if (el.vBoost) { el.vBoost.textContent = G.boostLabel || ''; }
+    }
   }
 
   function showOnly(which) {

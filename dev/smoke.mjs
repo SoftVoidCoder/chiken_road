@@ -530,6 +530,80 @@ function step(title, fn) {
     G.setTheme('meadow');
   });
 
+  step('бусты, комбо и щит', () => {
+    releaseAll();
+    G.start();
+    // комбо растёт на шагах вперёд
+    for (let i = 0; i < 8; i++) { G.tryMove(0, 1); tick(12); }
+    assert(G.G.combo >= 3, 'комбо не растёт на шагах вперёд: ' + G.G.combo);
+    assert(G.G.comboBest >= G.G.combo, 'лучшее комбо не запоминается');
+    // на всякий случай начинаем с живого забега
+    if (G.G.state !== 'playing' || !G.pl.alive) { G.start(); tick(3); }
+    assert(G.pl.alive, 'курица должна быть жива перед проверкой бустов');
+    // щит принимает смерть на себя
+    assert(G.boost('shield') === true, 'щит не активировался');
+    assert(G.G.shield === 1, 'щит не выставился');
+    G.die('car');
+    assert(G.G.state === 'playing', 'щит не спас от смерти: ' + G.G.state);
+    assert(G.G.shield === 0, 'щит не израсходовался');
+    assert(G.G.invuln > 0, 'после щита нет неуязвимости');
+    // буст с таймером
+    assert(G.boost('double') === true, 'буст не активировался');
+    assert(G.G.boost === 'double' && G.G.boostLeft > 0, 'таймер буста не запустился');
+    assert(G.G.boostsUsed >= 2, 'счётчик бустов не растёт');
+    assert(G.boost('nonexistent') === false, 'несуществующий буст активировался');
+    // мёртвой курице буст не выдаётся
+    G.die('car');
+    tick(80);
+    assert(G.G.state === 'over', 'после смерти нет экрана конца игры');
+    assert(G.boost('shield') === false, 'буст выдался после смерти');
+    tick(10);
+  });
+
+  step('магнит подбирает монеты рядом', () => {
+    releaseAll();
+    G.start();
+    const rows = G.rows();
+    const row = Object.keys(rows).map(Number).find((r) => rows[r].type === 'grass' && rows[r].coins.length);
+    if (row === undefined) { return; }
+    G.teleport(Math.max(0, rows[row].coins[0] - 1), row);
+    tick(2);
+    const before = G.G.totalCoins;
+    G.G.boost = 'magnet';
+    G.G.boostLeft = 3;
+    G.magnet();
+    assert(G.G.totalCoins > before, 'магнит не собрал монету (было ' + before + ')');
+  });
+
+  step('режимы меняют мир, испытание дня детерминировано', () => {
+    releaseAll();
+    const savedMode = G.mode();
+    const typesOf = () => {
+      const out = {};
+      const rows = G.rows();
+      for (const k of Object.keys(rows)) { out[rows[k].type] = 1; }
+      return out;
+    };
+    G.setMode('water');
+    G.start();
+    let t = typesOf();
+    assert(!t.road && !t.rail, 'в режиме «только вода» появилось лишнее: ' + Object.keys(t).join(','));
+    G.setMode('rails');
+    G.start();
+    t = typesOf();
+    assert(t.rail, 'в режиме «только рельсы» нет рельсов');
+    assert(!t.water, 'в режиме «только рельсы» появилась вода');
+    G.setMode(savedMode);
+    // испытание дня: одинаковый мир при повторном старте
+    G.daily(true);
+    G.start();
+    const a = Object.keys(G.rows()).map((r) => G.rows()[r].type).join('');
+    G.start();
+    const b = Object.keys(G.rows()).map((r) => G.rows()[r].type).join('');
+    assert(a === b, 'испытание дня должно быть одинаковым');
+    G.daily(false);
+  });
+
   step('все 25 биомов играются без ошибок', () => {
     releaseAll();
     const saved = G.meta().stats.rows;

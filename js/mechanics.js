@@ -448,7 +448,7 @@
       // экранная позиция курицы: камера стоит так, что курица на PLAYER_SCREEN_Y
       var py = R.VH * C.PLAYER_SCREEN_Y;
       var px = R.VW / 2;
-      var dark = Math.max(th.fog * 0.75, th.dark);
+      var dark = Math.max(th.fog * 0.75, th.dark, (G.night || 0) * 0.8);
       if (dark > 0) {
         var g = U.grad('swirl|' + G.themeId + '|' + Math.round(R.VW) + 'x' + Math.round(R.VH), function () {
           var gg = ctx.createRadialGradient(px, py, Math.min(R.VW, R.VH) * (th.dark > 0.5 ? 0.16 : 0.30),
