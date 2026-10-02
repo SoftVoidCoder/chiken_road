@@ -1,0 +1,7 @@
+# архивы для консоли Яндекс Игр
+*.zip
+
+# служебное
+node_modules/
+Thumbs.db
+.DS_Store
