@@ -360,6 +360,38 @@ function step(title, fn) {
     G.setDiff('normal');
   });
 
+  step('поток разреженный: не больше 6 машин в ряду и просвет от 1.4 клетки', () => {
+    releaseAll();
+    let lanes = 0, cars = 0, minGapCells = Infinity, maxCars = 0;
+    for (const id of ['easy', 'normal', 'hard']) {
+      G.setDiff(id);
+      for (let w = 0; w < 6; w++) {
+        G.start();
+        const rows = G.rows();
+        for (const k of Object.keys(rows)) {
+          const r = rows[k];
+          if (r.type !== 'road' || !r.items.length) { continue; }
+          lanes++;
+          cars += r.items.length;
+          if (r.items.length > maxCars) { maxCars = r.items.length; }
+          assert(r.items.length <= 6, id + ': в ряду ' + r.items.length + ' машин — слишком плотно');
+          // просвет между соседними машинами по кольцу
+          const xs = r.items.map((it) => it.x).sort((a, b) => a - b);
+          for (let i = 1; i < xs.length; i++) {
+            const gapCells = (xs[i] - xs[i - 1]) / 48 - r.items[0].len;
+            if (gapCells < minGapCells) { minGapCells = gapCells; }
+          }
+        }
+      }
+    }
+    const avgCars = cars / lanes;
+    assert(avgCars < 4.5, 'в среднем слишком много машин в ряду: ' + avgCars.toFixed(1));
+    assert(minGapCells > 1.4, 'найден слишком узкий просвет: ' + minGapCells.toFixed(2) + ' клетки');
+    console.log('       машин в ряду: в среднем ' + avgCars.toFixed(1) + ', максимум ' + maxCars
+      + '; самый узкий просвет: ' + minGapCells.toFixed(2) + ' клетки');
+    G.setDiff('normal');
+  });
+
   step('новые 2D-модели машин выезжают на дороги', () => {
     releaseAll();
     const seen = new Set();
