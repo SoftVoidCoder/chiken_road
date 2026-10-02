@@ -372,17 +372,6 @@
       return M.state.pass.premium;
     },
 
-    /* --- призрак рекорда -------------------------------------------------- */
-    ghostRecord: function (track, score) {
-      if (!track || !track.length) { return; }
-      var st = M.state;
-      if (!st.ghost || score > st.ghost.score) {
-        st.ghost = { score: score, track: track.slice(0, 400) };
-      }
-    },
-    ghostTrack: function () { return M.state.ghost ? M.state.ghost.track : null; },
-    ghostScore: function () { return M.state.ghost ? M.state.ghost.score : 0; },
-
     /* --- события забега --------------------------------------------------- */
     onRunStart: function (ctx) {
       M._ctx = ctx || {};

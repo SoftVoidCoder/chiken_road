@@ -39,7 +39,16 @@
   function boot() {
     try { G.muted = window.localStorage.getItem('cc_muted') === '1'; } catch (e) {}
     Sound.setMuted(G.muted);
-    if (UI.el.btnMute) { UI.el.btnMute.textContent = G.muted ? '🔇' : '🔊'; }
+    U.setIcon(UI.el.btnMute, G.muted ? 'i-mute' : 'i-sound');
+
+    // Банк звуков и музыки лежит в assets/audio: качаем заранее, играем после
+    // первого жеста игрока (иначе браузер блокирует автозапуск звука).
+    if (Sound.load) { Sound.load(); }
+    var unlockSound = function () { Sound.unlock(); };
+    var gestures = ['pointerdown', 'touchstart', 'mousedown', 'keydown'];
+    for (var gi = 0; gi < gestures.length; gi++) {
+      try { window.addEventListener(gestures[gi], unlockSound, { once: true, passive: true }); } catch (e) {}
+    }
 
     // во время рекламы платформа обязана видеть остановку геймплея
     Pl.onPause = function () {
@@ -71,6 +80,7 @@
       G.state = 'menu';
       UI.menu();
       UI.showOnly('ovMenu');
+      Sound.music('menu');
       // при первом запуске показываем короткое обучение (п. 6.8)
       if (!G.tutorialDone && CC.screens && CC.screens.openTutorial) {
         CC.screens.openTutorial();
@@ -81,6 +91,7 @@
       G.state = 'menu';
       UI.menu();
       UI.showOnly('ovMenu');
+      Sound.music('menu');
     });
 
     requestAnimationFrame(frame);
@@ -99,6 +110,11 @@
     // мета-прогресс, настройки и активный биом
     if (META && META.load) { META.load(data.meta); }
     if (CC.settings && CC.settings.load) { CC.settings.load(data.settings); }
+    // настройки звука и музыки из профиля применяем сразу, до первого кадра
+    if (CC.settings) {
+      if (Sound.setSfx) { Sound.setSfx(CC.settings.get('sound') !== false); }
+      if (Sound.setMusic) { Sound.setMusic(CC.settings.get('music') !== false); }
+    }
     if (data.theme && TH.byId[data.theme] && TH.isUnlocked(data.theme, META.stats().rows)) { G.themeId = data.theme; }
     G.skins = ['classic'];
     if (data.skins && data.skins.length) {
@@ -151,6 +167,7 @@
     ensure: W.ensureRows,
     resize: U.resize,
     quality: function () { return { level: R.quality, fps: R.fps, fine: R.fine }; },
+    audio: function () { return Sound.state ? Sound.state() : null; },
     setQuality: function (q) { R.quality = clamp(q | 0, 0, 2); U.applyQuality(); U.resize(); return R.quality; },
     caches: function () { return { sprites: Object.keys(CC.actors.sprites || {}).length }; },
 
@@ -203,7 +220,6 @@
     claimChest: function () { return META.claimChest(); },
     pass: function () { return META.passInfo(); },
     claimPass: function (lvl, track) { return META.claimPass(lvl, track); },
-    ghost: function () { return META.ghostTrack(); },
 
     /* скины и кастомизация */
     skinList: function () {

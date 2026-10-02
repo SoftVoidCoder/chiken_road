@@ -9,7 +9,8 @@ import path from 'node:path';
 import vm from 'node:vm';
 import { fileURLToPath } from 'node:url';
 
-const root = fs.existsSync(path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'game.js'))
+// Маркер корня игры — index.html: рядом с ним лежат css/, js/ и assets/.
+const root = fs.existsSync(path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'index.html'))
   ? path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')            // dev/ внутри репозитория игры
   : path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', 'crossy'); // dev/ рядом с папкой crossy
 // Модульная сборка: порядок тот же, что в index.html — от ядра к точке входа.

@@ -65,7 +65,6 @@
     G.coins = 0; G.shake = 0; G.flash = 0; G.invuln = 0; G.deathT = 0;
     G.eagle = null; G.reviveUsed = false; G.hintShown = false;
     G.boostsUsed = 0; G.noStopBest = 0; G.ghostBeaten = false;
-    G.ghostTrack = []; G.ghostNext = 0;
     if (MECH) { MECH.reset(); }
     if (W.resetSeed) { W.resetSeed(); }
     G.slide = null; G.sliding = false; G.iceHint = 0; G.wind = null;
@@ -82,6 +81,8 @@
 
   function startGame() {
     Sound.init();
+    // фоновая музыка забега: трек зависит от сложности и режима
+    if (Sound.music && Sound.runTrack) { Sound.music(Sound.runTrack()); }
     reset();
     G.state = 'playing';
     // сообщаем мете контекст забега: от него зависят задания «поиграй в биоме»
@@ -374,12 +375,6 @@
 
     updateParticles(dt);
 
-    // призрак рекорда: раз в треть секунды запоминаем, где была курица
-    if (pl.alive && G.runTime >= G.ghostNext && G.ghostTrack.length < 400) {
-      G.ghostNext = G.runTime + 0.3;
-      G.ghostTrack.push({ r: playerRow(), c: playerCol(), t: G.runTime });
-    }
-
     // Смена дня и ночи: каждые 30 рядов темнеет и снова светлеет
     var dayPhase = (G.maxRow % 60) / 60;
     G.night = dayPhase > 0.5 ? Math.min(1, (dayPhase - 0.5) * 2) : 0;
@@ -400,7 +395,17 @@
     if (G.state === 'over') { return; }
     G.state = 'over';
     Pl.gameplayStop();
-    // Мета-прогрессия: статистика, задания, достижения, сезонный опыт
+    // музыка забега смолкает, звучит короткий проигрыш, затем тема экрана итогов
+    if (Sound.stopMusic) { Sound.stopMusic(); }
+    Sound.over();
+    setTimeout(function () {
+      if (G.state === 'over' && Sound.music) { Sound.music('over'); }
+    }, 2400);
+    // Мета-прогрессия: статистика, задания, достижения, сезонный опыт.
+    // Раньше «призрак рекорда» рисовал полупрозрачную курицу поверх игры —
+    // от неё отказались, а достижение теперь выдаётся за побитый рекорд.
+    var prevBest = bestFor();
+    if (G.score > prevBest && prevBest > 0) { G.ghostBeaten = true; }
     if (META && META.onRunEnd) {
       G.metaResult = META.onRunEnd({
         rows: G.maxRow, coins: G.coins, reason: G.deathReason,
@@ -408,11 +413,10 @@
         biome: G.themeId, mode: G.modeId, diff: G.diffId,
         boostUsed: G.boostsUsed, noStop: G.noStopBest, ghostBeaten: G.ghostBeaten
       });
-      META.ghostRecord(G.ghostTrack, G.score);
       if (Pl.metric) { Pl.metric('run_end', { rows: G.maxRow }); }
     }
 
-    var isRecord = G.score > bestFor();
+    var isRecord = G.score > prevBest;
     if (isRecord) { G.bests[G.diffId] = G.score; }
     G.best = Math.max(G.best, G.score, bestFor());
     saveProfile();
@@ -519,6 +523,7 @@
     pl.hop = null; pl.log = null; pl.alive = true; pl.idle = 0; pl.facing = 'up';
     G.eagle = null; G.invuln = 2.0; G.deathT = 0; G.shake = 0; G.flash = 0;
     G.state = 'playing';
+    if (Sound.music && Sound.runTrack) { Sound.music(Sound.runTrack()); }
     UI.hideHint();
     UI.showOnly(null);
     Pl.gameplayStart();

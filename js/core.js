@@ -201,7 +201,7 @@
     reviveUsed: false, runStart: 0, muted: false,
     hintShown: false,
     combo: 0, comboTimer: 0, comboBest: 0,
-    boostsUsed: 0, noStopBest: 0, ghostBeaten: false, ghostTrack: [], ghostNext: 0,
+    boostsUsed: 0, noStopBest: 0, ghostBeaten: false,
     boost: null, boostLeft: 0, shield: 0, boostLabel: '',
     weather: null, weatherT: 0
   };
@@ -383,7 +383,44 @@
     for (var k in api) { if (api.hasOwnProperty(k)) { bucket[k] = api[k]; } }
     return bucket;
   };
+
+  /* --- иконки --------------------------------------------------------------
+     Весь интерфейс рисует значки из спрайта в index.html (набор Lucide):
+     <svg class="ic"><use href="#i-*"/></svg>. Эмодзи не используются — на
+     разных системах они выглядели по-разному. Ниже три помощника: строка
+     разметки (для innerHTML), готовый узел (для DOM) и замена значка. */
+  function iconHtml(symbol, cls) {
+    return '<svg class="ic' + (cls ? ' ' + cls : '') + '" aria-hidden="true" focusable="false">' +
+      '<use href="#' + symbol + '"/></svg>';
+  }
+  function icon(symbol, cls) {
+    var svg;
+    if (document.createElementNS) {
+      svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+      svg.setAttribute('class', 'ic' + (cls ? ' ' + cls : ''));
+      var use = document.createElementNS('http://www.w3.org/2000/svg', 'use');
+      use.setAttribute('href', '#' + symbol);
+      svg.appendChild(use);
+      return svg;
+    }
+    svg = document.createElement('span');
+    svg.className = 'ic ' + (cls || '');
+    svg.innerHTML = iconHtml(symbol);
+    return svg;
+  }
+  // Меняем значок внутри кнопки, не трогая подпись рядом
+  function setIcon(host, symbol) {
+    if (!host) { return; }
+    var use = host.querySelector ? host.querySelector('use') : null;
+    if (use) {
+      use.setAttribute('href', '#' + symbol);
+      use.setAttribute('xlink:href', '#' + symbol);
+    } else {
+      host.innerHTML = iconHtml(symbol);
+    }
+  }
   U.clamp = clamp; U.rnd = rnd; U.pick = pick; U.hash01 = hash01;
+  U.icon = icon; U.iconHtml = iconHtml; U.setIcon = setIcon;
   U.resize = resize; U.camTargetFor = camTargetFor; U.colX = colX; U.rowY = rowY;
   U.diff = diff; U.eagleLimit = eagleLimit; U.bestFor = bestFor;
   U.profile = profile; U.saveProfile = saveProfile;

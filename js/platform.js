@@ -72,6 +72,9 @@
       skinsHint: 'Купи скин за монеты и надень его — курица сразу изменится.',
       buy: 'Купить', equip: 'Надеть', equipped: 'Надето', owned: 'Куплено',
       poor: 'Мало монет', bought: 'Куплено!', notEnough: 'Не хватает монет',
+      watch_ad: 'За рекламу', boost_on: 'Включено: {s}', soon: 'Недоступно', stock: 'Запас',
+      store_local_note: 'Витрина и реклама работают внутри Яндекс Игр',
+      st_min: 'мин', st_inter: 'Межстраничная реклама',
       sk_classic: 'Классика', sk_chick: 'Цыплёнок', sk_bandit: 'Разбойник', sk_ninja: 'Ниндзя',
       sk_zombie: 'Зомби', sk_robot: 'Робот', sk_gold: 'Золотая', sk_rainbow: 'Радуга',
 
@@ -127,7 +130,7 @@
       ach_pet: 'Не один', ach_pet_d: 'Заведи питомца',
       ach_pass: 'Сезонный', ach_pass_d: 'Пройди 10 уровней сезона',
       ach_allmodes: 'Всеядный', ach_allmodes_d: 'Поиграй во всех режимах',
-      ach_ghost: 'Быстрее себя', ach_ghost_d: 'Побей собственный призрак',
+      ach_ghost: 'Быстрее себя', ach_ghost_d: 'Побей собственный рекорд',
 
       /* статистика */
       st_runs: 'Забегов', st_rows: 'Рядов всего', st_best: 'Лучший забег', st_coins: 'Монет собрано',
@@ -158,7 +161,7 @@
       feedback: 'Написать автору', auth: 'Войти в Яндекс', authWhy: 'Чтобы прогресс сохранялся на всех устройствах',
       loggedIn: 'Вы вошли как {n}', cloudOn: 'Облачное сохранение включено',
       daily_used: 'Сегодня уже пройдено', daily_best: 'Лучший результат дня',
-      ghost: 'Призрак рекорда', ghost_on: 'Призрак включён', ghost_off: 'Призрак выключен',
+      ghost: 'Личный рекорд',
       combo: 'Комбо', weather: 'Погода', mode: 'Режим', biome: 'Биом',
       mode_classic: 'Классика', mode_water: 'Только вода', mode_rails: 'Только рельсы',
       mode_nostop: 'Без остановок', mode_night: 'Ночь', mode_extreme: 'Экстрим',
@@ -210,6 +213,9 @@
       skinsHint: 'Buy a skin with coins and put it on — the chicken changes right away.',
       buy: 'Buy', equip: 'Wear', equipped: 'Worn', owned: 'Owned',
       poor: 'Too few coins', bought: 'Bought!', notEnough: 'Not enough coins',
+      watch_ad: 'Watch ad', boost_on: 'On: {s}', soon: 'Unavailable', stock: 'In stock',
+      store_local_note: 'Store and ads work inside Yandex Games',
+      st_min: 'min', st_inter: 'Interstitial ads',
       sk_classic: 'Classic', sk_chick: 'Chick', sk_bandit: 'Bandit', sk_ninja: 'Ninja',
       sk_zombie: 'Zombie', sk_robot: 'Robot', sk_gold: 'Golden', sk_rainbow: 'Rainbow',
 
@@ -262,7 +268,7 @@
       ach_pet: 'Not alone', ach_pet_d: 'Get a pet',
       ach_pass: 'Seasonal', ach_pass_d: 'Reach season level 10',
       ach_allmodes: 'Omnivore', ach_allmodes_d: 'Play every mode',
-      ach_ghost: 'Faster than me', ach_ghost_d: 'Beat your own ghost',
+      ach_ghost: 'Faster than me', ach_ghost_d: 'Beat your own record',
 
       st_runs: 'Runs', st_rows: 'Rows total', st_best: 'Best run', st_coins: 'Coins collected',
       st_time: 'Time played', st_deaths: 'Deaths', st_biomes: 'Biomes unlocked', st_skins: 'Skins',
@@ -289,7 +295,7 @@
       feedback: 'Email the author', auth: 'Sign in with Yandex', authWhy: 'To keep progress on all your devices',
       loggedIn: 'Signed in as {n}', cloudOn: 'Cloud saves enabled',
       daily_used: 'Already done today', daily_best: 'Best of the day',
-      ghost: 'Record ghost', ghost_on: 'Ghost on', ghost_off: 'Ghost off',
+      ghost: 'Personal best',
       combo: 'Combo', weather: 'Weather', mode: 'Mode', biome: 'Biome',
       mode_classic: 'Classic', mode_water: 'Water only', mode_rails: 'Rails only',
       mode_nostop: 'Non-stop', mode_night: 'Night', mode_extreme: 'Extreme',

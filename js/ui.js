@@ -29,7 +29,7 @@
     btnPlay: $('btnPlay'), btnRestart: $('btnRestart'), btnRevive: $('btnRevive'),
     btnResume: $('btnResume'), btnRestart2: $('btnRestart2'),
     btnMute: $('btnMute'), btnPause: $('btnPause'),
-    btnPauseSound: $('btnPauseSound'), icPauseSound: $('icPauseSound'),
+    btnPauseSound: $('btnPauseSound'), icPauseSound: $('btnPauseSound'),
     btnPauseSkins: $('btnPauseSkins'), btnToMenu: $('btnToMenu'), btnMenuSkins: $('btnMenuSkins'),
     btnSkinsClose: $('btnSkinsClose'), skinsGrid: $('skinsGrid'), skCoins: $('skCoins'),
     btnMenuMaps: $('btnMenuMaps'), btnThemesClose: $('btnThemesClose'), themeGrid: $('themeGrid'),
@@ -62,8 +62,12 @@
       var info = META.levelInfo ? META.levelInfo() : null;
       if (info && info.level !== el.vRank._lvl) {
         el.vRank._lvl = info.level;
-        el.vRank.textContent = info.rank === 'diamond' ? '💎' : info.rank === 'gold' ? '🥇' :
-          info.rank === 'silver' ? '🥈' : '🥉';
+        var rankIcon = info.rank === 'diamond' ? 'i-gem' :
+          info.rank === 'gold' ? 'i-medal' : info.rank === 'silver' ? 'i-medal' : 'i-medal';
+        U.setIcon(el.vRank, rankIcon);
+        if (el.vRank.setAttribute) {
+          el.vRank.setAttribute('class', 'rank ' + (info.rank || 'bronze'));
+        }
         if (el.vLevel) { el.vLevel.textContent = String(info.level); }
       }
     }
@@ -86,11 +90,22 @@
   }
   function hideHint() { if (el.hint) { el.hint.classList.remove('on'); } }
 
+  // Иконка внутри кнопки — это <svg><use href="#i-..."></svg>, поэтому текст
+  // не подставляем: подменяем ссылку на символ в спрайте index.html.
+  function setIcon(host, symbol) {
+    if (!host) { return; }
+    var use = host.querySelector ? host.querySelector('use') : null;
+    if (use) { use.setAttribute('href', '#' + symbol); use.setAttribute('xlink:href', '#' + symbol); }
+    if (host.setAttribute) { host.setAttribute('aria-label', symbol === 'i-mute' ? 'Звук выключен' : 'Звук'); }
+  }
+
   function toggleMute() {
     G.muted = !G.muted;
     Sound.setMuted(G.muted);
-    if (el.btnMute) { el.btnMute.textContent = G.muted ? '🔇' : '🔊'; }
-    if (el.icPauseSound) { el.icPauseSound.textContent = G.muted ? '🔇' : '🔊'; }
+    setIcon(el.btnMute, G.muted ? 'i-mute' : 'i-sound');
+    setIcon(el.icPauseSound, G.muted ? 'i-mute' : 'i-sound');
+    if (el.btnPauseSound) { el.btnPauseSound.classList.toggle('off', G.muted); }
+    if (!G.muted) { Sound.click(); }
     try { window.localStorage.setItem('cc_muted', G.muted ? '1' : '0'); } catch (e) {}
   }
   function togglePause() {
@@ -188,9 +203,13 @@
       var owned = ownsSkin(c.id), worn = G.skin === c.id;
       c.node.classList.toggle('sel', worn);
       c.node.classList.toggle('locked', !owned);
-      c.tag.textContent = worn ? Pl.t('equipped') : (owned ? Pl.t('equip') : sk.price + ' 🪙');
+      if (worn) { c.tag.textContent = Pl.t('equipped'); }
+      else if (owned) { c.tag.textContent = Pl.t('equip'); }
+      else { c.tag.innerHTML = sk.price + ' ' + U.iconHtml('i-coin'); }
       c.tag.className = 'skc-tag' + (worn || owned ? ' have' : (G.totalCoins >= sk.price ? '' : ' poor'));
-      c.badge.textContent = worn ? '✅' : (owned ? '' : '🔒');
+      if (worn) { U.setIcon(c.badge, 'i-check'); }
+      else if (!owned) { U.setIcon(c.badge, 'i-lock'); }
+      else { c.badge.innerHTML = ''; }
     }
     drawSkinPreviews();
   }
@@ -262,6 +281,7 @@
   function toMenu() {
     saveProfile();
     Sound.resume();
+    if (Sound.music) { Sound.music('menu'); }
     G.state = 'menu';
     G.eagle = null;
     GM.reset();
@@ -310,7 +330,7 @@
       var sel = G.themeId === t.id;
       html += '<button class="themecard' + (sel ? ' sel' : '') + (open ? '' : ' locked') +
         '" data-theme="' + t.id + '" type="button">' +
-        '<span class="thc-icon">' + (open ? t.icon : '🔒') + '</span>' +
+        '<span class="thc-icon">' + U.iconHtml(open ? t.icon : 'i-lock') + '</span>' +
         '<span class="thc-name">' + Pl.t('th_' + t.id) + '</span>' +
         '<span class="thc-tag">' + (open
           ? (META.biomeBest(t.id) > 0 ? Pl.t('best') + ': ' + META.biomeBest(t.id) : Pl.t('th_' + t.id + '_d'))

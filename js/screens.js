@@ -34,20 +34,43 @@
     return n;
   }
 
-  // Строка списка: иконка, заголовок, подпись и (необязательно) кнопка
+  // Узел с разметкой: нужен там, где в подпись встраивается значок монеты
+  function markup(tag, cls, html) {
+    var n = node(tag, cls);
+    n.innerHTML = html;
+    return n;
+  }
+  // «120 🪙» — сумма со значком монеты из спрайта
+  function coinText(n) { return String(n) + ' ' + U.iconHtml('i-coin'); }
+
+  // Строка списка: значок, заголовок, подпись и (необязательно) кнопка.
+  // Значок — либо имя символа из спрайта ('i-coin'), либо готовая строка
+  // (номер места в рейтинге), либо узел. Кнопка без обработчика не рисуется
+  // вовсе: раньше на экранах висели «мёртвые» кнопки, которые ничего не делали.
   function row(icon, title, sub, btnText, btnCls, onClick) {
     var r = node('div', 'row');
-    if (icon) { r.appendChild(node('div', 'ric', icon)); }
+    if (icon) {
+      var ric = node('div', 'ric');
+      if (typeof icon === 'string' && icon.indexOf('i-') === 0) { ric.appendChild(U.icon(icon)); }
+      else if (typeof icon === 'string') { ric.textContent = icon; }
+      else { ric.appendChild(icon); }
+      r.appendChild(ric);
+    }
     var txt = node('div', 'rtxt');
     txt.appendChild(node('div', 'rt', title));
     if (sub) { txt.appendChild(node('div', 'rs', sub)); }
     r.appendChild(txt);
-    if (btnText) {
-      var b = node('button', 'rbtn ' + (btnCls || ''), btnText);
+    if (btnText && onClick) {
+      var b = node('button', 'rbtn ' + (btnCls || ''));
       b.type = 'button';
-      if (onClick) { b.addEventListener('click', onClick); }
-      else { b.className += ' off'; }
+      if (String(btnText).indexOf('<') >= 0) { b.innerHTML = btnText; } else { b.textContent = String(btnText); }
+      b.addEventListener('click', onClick);
       r.appendChild(b);
+    } else if (btnText) {
+      // состояние, а не действие: показываем плашкой, а не кнопкой
+      var tagEl = node('span', 'rstate ' + (btnCls || ''));
+      if (String(btnText).indexOf('<') >= 0) { tagEl.innerHTML = btnText; } else { tagEl.textContent = String(btnText); }
+      r.appendChild(tagEl);
     }
     return r;
   }
@@ -109,13 +132,15 @@
      Режимы и бусты
      ========================================================================== */
   var MODES = [
-    { id: 'classic',  icon: '🐔', name: 'mode_classic',  desc: 'mode_classic_d' },
-    { id: 'water',    icon: '🌊', name: 'mode_water',    desc: 'mode_water_d' },
-    { id: 'rails',    icon: '🛤️', name: 'mode_rails',    desc: 'mode_rails_d' },
-    { id: 'nostop',   icon: '⚡', name: 'mode_nostop',   desc: 'mode_nostop_d' },
-    { id: 'night',    icon: '🌙', name: 'mode_night',    desc: 'mode_night_d' },
-    { id: 'extreme',  icon: '🔥', name: 'mode_extreme',  desc: 'mode_extreme_d' }
+    { id: 'classic',  icon: 'i-chicken', name: 'mode_classic',  desc: 'mode_classic_d' },
+    { id: 'water',    icon: 'i-water',   name: 'mode_water',    desc: 'mode_water_d' },
+    { id: 'rails',    icon: 'i-rails',   name: 'mode_rails',    desc: 'mode_rails_d' },
+    { id: 'nostop',   icon: 'i-zap',     name: 'mode_nostop',   desc: 'mode_nostop_d' },
+    { id: 'night',    icon: 'i-moon',    name: 'mode_night',    desc: 'mode_night_d' },
+    { id: 'extreme',  icon: 'i-flame',   name: 'mode_extreme',  desc: 'mode_extreme_d' }
   ];
+  // значки бустов: имена символов спрайта
+  var BOOST_ICON = { magnet: 'i-magnet', slow: 'i-slow', shield: 'i-shield', double: 'i-double', mini: 'i-egg' };
 
   function modeById(id) {
     for (var i = 0; i < MODES.length; i++) { if (MODES[i].id === id) { return MODES[i]; } }
@@ -130,7 +155,9 @@
         var card = node('button', 'themecard' + (G.modeId === m.id ? ' sel' : ''));
         card.type = 'button';
         card.setAttribute('data-mode', m.id);
-        card.appendChild(node('span', 'thc-icon', m.icon));
+        var mIcon = node('span', 'thc-icon');
+        mIcon.appendChild(U.icon(m.icon));
+        card.appendChild(mIcon);
         card.appendChild(node('span', 'thc-name', T(m.name)));
         card.appendChild(node('span', 'thc-tag', T(m.desc)));
         card.addEventListener('click', function () {
@@ -153,6 +180,9 @@
     return bucket === 'cheap' ? Math.round(b.price * 0.8) : b.price;
   }
 
+  // Реклама за вознаграждение доступна только на площадке (или в отладочном режиме)
+  function adsReady() { return !!(Pl.rewardedAvailable || Pl.debugAd); }
+
   function buildBoosts(targetId, shop) {
     var box = clearBox(targetId);
     if (!box) { return; }
@@ -160,42 +190,84 @@
     for (var i = 0; i < list.length; i++) {
       (function (b) {
         var active = G.boost === b.id || (b.id === 'shield' && G.shield > 0);
-        var card = node('button', 'bcard' + (active ? ' sel' : ''));
+        var stock = (G.boostStock && G.boostStock[b.id]) || 0;
+        var price = boostPrice(b);
+        var card = node('button', 'bcard' + (active ? ' sel' : '') + (stock > 0 ? ' has' : ''));
         card.type = 'button';
         card.setAttribute('data-boost', b.id);
-        card.appendChild(node('span', 'bic', b.id === 'magnet' ? '🧲' : b.id === 'slow' ? '🐌' :
-          b.id === 'shield' ? '🛡️' : b.id === 'double' ? '✖️2' : '🐤'));
+        var bic = node('span', 'bic');
+        bic.appendChild(U.icon(BOOST_ICON[b.id] || 'i-star'));
+        card.appendChild(bic);
         card.appendChild(node('span', 'bn', T(b.name)));
-        card.appendChild(node('span', 'bp', shop ? T('price_coins', { n: boostPrice(b) }) : T('use')));
+        // Подпись честно говорит, что произойдёт по нажатию
+        var label;
+        if (shop) {
+          label = T('price_coins', { n: price });
+        } else if (stock > 0) {
+          label = T('use') + ' ×' + stock;
+          card.className += ' ready';
+        } else if (G.totalCoins >= price) {
+          label = T('price_coins', { n: price });
+        } else if (adsReady()) {
+          label = T('watch_ad');
+        } else {
+          label = T('poor');
+        }
+        card.appendChild(node('span', 'bp', label));
+        // Запас виден всегда: в меню он объясняет, что уже куплено
+        if (stock > 0) { card.appendChild(markup('span', 'bp stock', T('stock') + ': ' + stock)); }
         card.addEventListener('click', function () { boostAction(b, shop); });
         box.appendChild(card);
       })(list[i]);
     }
   }
 
+  // Нажатие на буст. В меню — покупка в запас, в забеге — применение из запаса,
+  // а если запаса нет, то покупка за монеты прямо здесь (раньше в забеге можно
+  // было только смотреть рекламу, и без площадки буст не включался вообще).
   function boostAction(b, shop) {
-    if (shop) {
-      // покупка на будущее: монеты списываются, буст применяется сразу в забеге
-      var price = boostPrice(b);
-      if (G.totalCoins < price) { toast(T('notEnough')); return; }
-      if (!UI.spendCoins(price)) { return; }
-      G.boostStock = G.boostStock || {};
-      G.boostStock[b.id] = (G.boostStock[b.id] || 0) + 1;
-      toast(T('bought'));
-      buildBoosts('boostRow', true);
-      return;
-    }
-    // в забеге: сначала из запаса, потом за рекламу
-    var stock = G.boostStock && G.boostStock[b.id] ? G.boostStock[b.id] : 0;
-    if (stock > 0) {
+    var price = boostPrice(b);
+    var stock = (G.boostStock && G.boostStock[b.id]) || 0;
+    if (!shop && stock > 0) {
       G.boostStock[b.id] = stock - 1;
-      if (CC.game.activateBoost(b.id)) { buildBoosts('pauseBoostRow', false); }
+      if (CC.game.activateBoost(b.id)) {
+        SND.boost();
+        toast(T('boost_on', { s: T(b.name) }));
+        buildBoosts('pauseBoostRow', false);
+      }
       return;
     }
-    Pl.showRewarded(function () {
-      if (CC.game.activateBoost(b.id)) { buildBoosts('pauseBoostRow', false); }
-      if (META && META.onAd) { META.onAd(); }
-    }, function () { toast(T('purchaseFail')); });
+    if (G.totalCoins >= price) {
+      if (!UI.spendCoins(price)) { return; }
+      if (shop) {
+        G.boostStock = G.boostStock || {};
+        G.boostStock[b.id] = (G.boostStock[b.id] || 0) + 1;
+        U.saveProfile();
+        SND.buy();
+        toast(T('bought'));
+        buildBoosts('boostRow', true);
+      } else {
+        // в забеге покупаем и сразу применяем: запас не нужен
+        if (CC.game.activateBoost(b.id)) {
+          SND.boost();
+          toast(T('boost_on', { s: T(b.name) }));
+        }
+        buildBoosts('pauseBoostRow', false);
+      }
+      return;
+    }
+    if (!shop && adsReady()) {
+      Pl.showRewarded(function () {
+        if (CC.game.activateBoost(b.id)) {
+          SND.boost();
+          buildBoosts('pauseBoostRow', false);
+        }
+        if (META && META.onAd) { META.onAd(); }
+      }, function () { toast(T('purchaseFail')); });
+      return;
+    }
+    SND.error();
+    toast(T('notEnough'));
   }
 
   /* ==========================================================================
@@ -239,11 +311,12 @@
 
   function questRow(q) {
     var sub = questText(q) + ' — ' + q.progress + '/' + q.target;
+    // Незакрытое задание не получает кнопку: прогресс показывает полоса.
+    // Раньше там висела кнопка «Прогресс», которая ничего не делала.
     var btn = null, cls = '';
     if (q.claimed) { btn = T('q_claimed'); cls = 'off'; }
-    else if (q.done) { btn = T('q_claim') + ' +' + q.reward + ' 🪙'; cls = 'gold'; }
-    else { btn = T('q_progress'); cls = 'off'; }
-    var r = row(q.done ? '✅' : '📋', T('q_progress') === btn ? questText(q) : questText(q), sub, btn, cls,
+    else if (q.done) { btn = T('q_claim') + ' +' + q.reward + ' ' + U.iconHtml('i-coin'); cls = 'gold'; }
+    var r = row(q.claimed ? 'i-check' : (q.done ? 'i-gift' : 'i-quests'), questText(q), sub, btn, cls,
       (q.done && !q.claimed) ? function () {
         var got = META.claimQuest(q.id);
         if (got) {
@@ -255,6 +328,7 @@
         }
       } : null);
     if (!q.done) { r.appendChild(bar(pct(q.progress, q.target))); }
+    else { r.className += ' done'; }
     return r;
   }
 
@@ -270,8 +344,14 @@
     box.appendChild(node('div', 'subh', open + ' / ' + list.length));
     for (var j = 0; j < list.length; j++) {
       var a = list[j];
-      box.appendChild(row(a.unlocked ? '🏆' : '🔒', T('ach_' + a.id), T('ach_' + a.id + '_d'),
-        a.unlocked ? T('q_done') : null, a.unlocked ? 'gold' : 'off', null));
+      // Достижение нельзя «нажать»: открытое отмечаем галочкой в строке,
+      // закрытое — замком. Мёртвых кнопок «Готово» здесь больше нет.
+      var ar = row(a.unlocked ? 'i-trophy' : 'i-lock', T('ach_' + a.id), T('ach_' + a.id + '_d'), null, null, null);
+      if (a.unlocked) { ar.className += ' done'; }
+      var mark = node('div', 'rmark');
+      mark.appendChild(U.icon(a.unlocked ? 'i-check' : 'i-lock'));
+      ar.appendChild(mark);
+      box.appendChild(ar);
     }
   }
 
@@ -290,14 +370,16 @@
       var ready = r.level <= info.level;
       var premItem = r.premium ? T('reward_' + r.premium.item.kind, { s: T(slotNameKey(r.premium.item)) }) : '';
       var title = T('pass_level') + ' ' + r.level + (ready ? ' — ' + T('q_done') : '');
-      var sub = T('pass_free') + ': +' + r.free.coins + ' 🪙' +
-        (r.premium ? '   ' + T('pass_premium') + ': ' + premItem : '');
+      // Награды строкой с переносами: значок монеты не должен вылезать за карточку
+      var sub = '<span class="pr">' + T('pass_free') + ': <b>+' + r.free.coins + '</b> ' +
+        U.iconHtml('i-coin') + '</span>' +
+        (r.premium ? '<span class="pr prem">' + T('pass_premium') + ': ' + premItem + '</span>' : '');
       var canFree = ready && !r.free.claimed;
       var canPrem = ready && r.premium && !r.premium.claimed && info.premium;
       var btn = r.free.claimed ? T('q_claimed') : (canFree ? T('pass_claim') : T('pass_need', { n: r.level }));
       var cls = canFree || canPrem ? 'gold' : 'off';
       var lvlCopy = r.level;
-      var el2 = row(r.free.claimed && (!r.premium || r.premium.claimed) ? '✅' : '🎫', title, sub, btn, cls,
+      var el2 = row(r.free.claimed && (!r.premium || r.premium.claimed) ? 'i-check' : 'i-ticket', title, markup('div', 'rs rewards', sub), btn, cls,
         (canFree || canPrem) ? function () {
           claimPassLevel(lvlCopy, canPrem && !canFree ? 'premium' : 'free');
         } : null);
@@ -361,7 +443,7 @@
     if (!box) { return; }
     var boards = [['best', T('best')], ['normal', T('diffNormal')], ['hard', T('diffHard')], ['daily', T('daily')]];
     if (!Pl.leaderboardsAvailable) {
-      box.appendChild(row('📊', T('leaders'), T('store_unavailable'), null, null, null));
+      box.appendChild(row('i-chart', T('leaders'), T('store_unavailable'), null, null, null));
       return;
     }
     for (var i = 0; i < boards.length; i++) {
@@ -369,15 +451,15 @@
         box.appendChild(node('div', 'subh', board[1]));
         var holder = node('div');
         box.appendChild(holder);
-        holder.appendChild(row('⏳', T('loading'), '', null, null, null));
+        holder.appendChild(row('i-hourglass', T('loading'), '', null, null, null));
         Pl.top(board[0], function (list) {
           holder.innerHTML = '';
           if (!list.length) {
-            holder.appendChild(row('📊', board[1], T('locked'), null, null, null));
+            holder.appendChild(row('i-chart', board[1], T('locked'), null, null, null));
             return;
           }
           for (var k = 0; k < list.length; k++) {
-            holder.appendChild(row(list[k].me ? '⭐' : '#' + list[k].rank,
+            holder.appendChild(row(list[k].me ? 'i-star' : '#' + list[k].rank,
               (list[k].rank + '. ' + list[k].name), String(list[k].score), null, null, null));
           }
         });
@@ -389,47 +471,57 @@
      Витрина покупок (инап через площадку)
      ========================================================================== */
   var PRODUCTS = [
-    { id: 'coins_500', icon: '🪙', name: 'bundle_1', desc: 'bundle_1_n', coins: 500 },
-    { id: 'coins_1500', icon: '💰', name: 'bundle_2', desc: 'bundle_2_n', coins: 1500 },
-    { id: 'coins_5000', icon: '🧰', name: 'bundle_3', desc: 'bundle_3_n', coins: 5000 },
-    { id: 'no_ads', icon: '🚫', name: 'noAds', desc: 'adsOff', noAds: true },
-    { id: 'season_pass', icon: '🎫', name: 'pass_premium_buy', desc: 'pass_premium', premium: true }
+    { id: 'coins_500', icon: 'i-coin', name: 'bundle_1', desc: 'bundle_1_n', coins: 500 },
+    { id: 'coins_1500', icon: 'i-banknote', name: 'bundle_2', desc: 'bundle_2_n', coins: 1500 },
+    { id: 'coins_5000', icon: 'i-box', name: 'bundle_3', desc: 'bundle_3_n', coins: 5000 },
+    { id: 'no_ads', icon: 'i-ban', name: 'noAds', desc: 'adsOff', noAds: true },
+    { id: 'season_pass', icon: 'i-ticket', name: 'pass_premium_buy', desc: 'pass_premium', premium: true }
   ];
 
   function buildStore() {
     var box = clearBox('storeList');
     if (!box) { return; }
-    if (!Pl.purchasesAvailable) {
-      box.appendChild(row('💎', T('store_unavailable'), '', G.adsDisabled ? T('adsOff') : null, 'off', null));
+    // Вне площадки покупки недоступны: не показываем кнопки и цены-заглушки,
+    // а честно пишем, что витрина работает только в Яндекс Играх.
+    var canBuy = !!Pl.purchasesAvailable;
+    if (!canBuy) {
+      box.appendChild(row('i-info', T('store_unavailable'), T('store_local_note'), null, null, null));
     }
     for (var i = 0; i < PRODUCTS.length; i++) {
       (function (p) {
         var price = Pl.priceOf(p.id);
-        var priceText = price ? (price.price + ' ' + (price.currency || Pl.currency.name)) : T('purchaseFail');
+        var priceText = price ? (price.price + ' ' + (price.currency || Pl.currency.name)) : '';
         var owned = (p.noAds && G.adsDisabled) || (p.premium && META.passInfo().premium);
-        box.appendChild(row(p.icon, T(p.name), T(p.desc) + '  •  ' + priceText,
-          owned ? T('owned') : T('buy'), owned ? 'off' : 'gold',
-          owned || !Pl.purchasesAvailable ? null : function () { buyProduct(p); }));
+        var sub = T(p.desc) + (priceText ? '  •  ' + priceText : '');
+        var canClick = canBuy && !owned;
+        box.appendChild(row(p.icon, T(p.name), sub,
+          owned ? T('owned') : (canBuy ? T('buy') : T('soon')),
+          owned || !canBuy ? 'off' : 'gold',
+          canClick ? function () { buyProduct(p); } : null));
       })(PRODUCTS[i]);
     }
-    // покупка за рекламу: монеты
-    box.appendChild(row('📺', T('coinsForAd'), T('getForAd'), T('getForAd'), 'gold', function () {
-      Pl.showRewarded(function () {
-        UI.addCoins(100);
-        if (META && META.onAd) { META.onAd(); }
-        SND.coin();
-        toast(T('reward_coins', { n: 100 }));
-        buildStore();
-      }, function () {});
-    }));
-    box.appendChild(row('🎁', T('freeChest'), T('chest_note'), T('getForAd'), 'gold', function () {
-      Pl.showRewarded(function () {
-        UI.addCoins(75);
-        if (META && META.onAd) { META.onAd(); }
-        SND.coin();
-        toast(T('reward_coins', { n: 75 }));
-      }, function () {});
-    }));
+    // покупка за рекламу: монеты и сундук. Без площадки ролик не показать,
+    // поэтому строки честно помечаются недоступными.
+    var adOk = adsReady();
+    box.appendChild(row('i-tv', T('coinsForAd'), T('getForAd'),
+      adOk ? T('getForAd') : T('soon'), adOk ? 'gold' : 'off', adOk ? function () {
+        Pl.showRewarded(function () {
+          UI.addCoins(100);
+          if (META && META.onAd) { META.onAd(); }
+          SND.coin();
+          toast(T('reward_coins', { n: 100 }));
+          buildStore();
+        }, function () {});
+      } : null));
+    box.appendChild(row('i-gift', T('freeChest'), T('chest_note'),
+      adOk ? T('getForAd') : T('soon'), adOk ? 'gold' : 'off', adOk ? function () {
+        Pl.showRewarded(function () {
+          UI.addCoins(75);
+          if (META && META.onAd) { META.onAd(); }
+          SND.coin();
+          toast(T('reward_coins', { n: 75 }));
+        }, function () {});
+      } : null));
   }
 
   function buyProduct(p) {
@@ -466,26 +558,26 @@
     var metrics = Pl.metrics();
     var mins = Math.round((st.timeMs || 0) / 60000);
     var rows = [
-      ['⭐', T('st_level'), lvl.level + ' (' + T('st_rank') + ': ' + lvl.rank + ')'],
-      ['🏁', T('st_runs'), st.runs],
-      ['📏', T('st_rows'), st.rows],
-      ['🥇', T('st_best'), st.best],
-      ['🪙', T('st_coins'), st.coins],
-      ['⏱️', T('st_time'), mins + ' мин'],
-      ['💀', T('st_deaths'), st.deaths],
-      ['🗺️', T('st_biomes'), Object.keys(st.biomes).length + ' / 25'],
-      ['🐔', T('st_skins'), G.skins.length + ' / ' + SK.list.length],
-      ['⚡', T('st_boosts'), st.boosts || 0],
-      ['🔥', T('st_combo'), st.comboBest || 0],
-      ['🌍', T('st_fav'), fav ? T('th_' + fav) : '—'],
-      ['📺', T('st_ads'), metrics.ad_rewarded || 0],
-      ['🎬', 'Межстраничная реклама', metrics.ad_interstitial || 0]
+      ['i-star', T('st_level'), lvl.level + ' (' + T('st_rank') + ': ' + lvl.rank + ')'],
+      ['i-flag', T('st_runs'), st.runs],
+      ['i-ruler', T('st_rows'), st.rows],
+      ['i-medal', T('st_best'), st.best],
+      ['i-coin', T('st_coins'), st.coins],
+      ['i-clock', T('st_time'), mins + ' ' + T('st_min')],
+      ['i-skull', T('st_deaths'), st.deaths],
+      ['i-map', T('st_biomes'), Object.keys(st.biomes).length + ' / 25'],
+      ['i-chicken', T('st_skins'), G.skins.length + ' / ' + SK.list.length],
+      ['i-zap', T('st_boosts'), st.boosts || 0],
+      ['i-flame', T('st_combo'), st.comboBest || 0],
+      ['i-globe', T('st_fav'), fav ? T('th_' + fav) : '—'],
+      ['i-tv', T('st_ads'), metrics.ad_rewarded || 0],
+      ['i-clapper', T('st_inter'), metrics.ad_interstitial || 0]
     ];
     for (var i = 0; i < rows.length; i++) {
       box.appendChild(row(rows[i][0], rows[i][1], '', String(rows[i][2]), 'off', null));
     }
     if (Pl.isAuthorized()) {
-      box.appendChild(row('👤', T('cloudOn'), Pl.authName() || '', null, null, null));
+      box.appendChild(row('i-user', T('cloudOn'), Pl.authName() || '', null, null, null));
     }
   }
 
@@ -535,7 +627,10 @@
             b.type = 'button';
             b.addEventListener('click', function () {
               S.set(it.key, pair[1]);
-              if (it.key === 'sound') { SND.setMuted(!pair[1]); }
+              // звук и музыка — независимые каналы настроек
+              if (it.key === 'sound') { SND.setSfx(pair[1]); }
+              if (it.key === 'music') { SND.setMusic(pair[1]); }
+              SND.select();
               buildSettings();
             });
             seg.appendChild(b);
@@ -560,7 +655,10 @@
     }
     // язык: переключатель доступен без знания текущего языка (иконка + самоназвание)
     var langWrap = node('div', 'setrow');
-    langWrap.appendChild(node('div', 'sl', '🌐 ' + T('set_lang')));
+    var sl = node('div', 'sl');
+    sl.appendChild(U.icon('i-lang'));
+    sl.appendChild(node('span', null, T('set_lang')));
+    langWrap.appendChild(sl);
     var langSeg = node('div', 'seg2');
     [['ru', 'Русский'], ['en', 'English']].forEach(function (pair) {
       var b = node('button', Pl.lang === pair[0] ? 'on' : '', pair[1]);
@@ -576,18 +674,20 @@
     langWrap.appendChild(langSeg);
     box.appendChild(langWrap);
     // обратная связь: требование площадки 6.1
-    box.appendChild(row('✉️', T('feedback'), Pl.feedbackEmail, null, null, null));
-    if (Pl.isTv) { box.appendChild(row('📺', T('tv_hint'), '', null, null, null)); }
+    box.appendChild(row('i-mail', T('feedback'), Pl.feedbackEmail, null, null, null));
+    if (Pl.isTv) { box.appendChild(row('i-tv', T('tv_hint'), '', null, null, null)); }
+    // Авторы звука и музыки: часть наборов под CC-BY, указание обязательно.
+    box.appendChild(node('div', 'keys credits', T('credits')));
   }
 
   /* ==========================================================================
      Обучение
      ========================================================================== */
   var TUTORIAL = [
-    { icon: '👆', text: 'tip_move' },
-    { icon: '🚗', text: 'tip_wait' },
-    { icon: '🪵', text: 'tip_water' },
-    { icon: '🦅', text: 'tip_eagle' }
+    { icon: 'i-tap', text: 'tip_move' },
+    { icon: 'i-car', text: 'tip_wait' },
+    { icon: 'i-log', text: 'tip_water' },
+    { icon: 'i-eagle', text: 'tip_eagle' }
   ];
   var tutStep = 0;
 
@@ -683,11 +783,17 @@
         if (cv.style) { cv.style.width = '64px'; cv.style.height = '64px'; }
         card.appendChild(cv);
         card.appendChild(node('span', 'skc-name', itemName(slot.id, item.id)));
-        var tag = node('span', 'skc-tag', isWorn ? T('equipped') : (owned ? T('equip') : item.price + ' 🪙'));
+        var tag;
+        if (isWorn) { tag = node('span', 'skc-tag', T('equipped')); }
+        else if (owned) { tag = node('span', 'skc-tag', T('equip')); }
+        else { tag = markup('span', 'skc-tag', coinText(item.price)); }
         if (isWorn || owned) { tag.className += ' have'; }
         else if (G.totalCoins < item.price) { tag.className += ' poor'; }
         card.appendChild(tag);
-        card.appendChild(node('span', 'skc-badge', isWorn ? '✅' : (owned ? '' : '🔒')));
+        var badge = node('span', 'skc-badge');
+        if (isWorn) { badge.appendChild(U.icon('i-check')); }
+        else if (!owned) { badge.appendChild(U.icon('i-lock')); }
+        card.appendChild(badge);
         card.addEventListener('click', function () { pickSlotItem(slot, item); });
         box.appendChild(card);
         previewInto(cv, slot.id, item.id);

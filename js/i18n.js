@@ -40,7 +40,7 @@
       th_asia: 'Азиатский квартал', th_asia_d: 'Дракон-поезд, фонарики и панды.',
 
       /* магазин: названия слотов и товаров, цены и состояния */
-      coinsShort: '🪙', price_coins: '{n} монет', price_ad: 'реклама',
+      coinsShort: '', price_coins: '{n} монет', price_ad: 'реклама',
       slot_custom: 'Внешний вид', choose: 'Выбрать', chosen: 'Выбрано',
       skins_all: 'Все скины', skins_biome: 'Скины биомов',
       bundle_coins: 'Набор монет', bundle_all: 'Всё сразу',
@@ -78,7 +78,7 @@
       th_maslenitsa: 'Russian yard', th_maslenitsa_d: 'Pancakes instead of coins and a bear with a balalaika.',
       th_asia: 'Asian quarter', th_asia_d: 'Dragon train, lanterns and pandas.',
 
-      coinsShort: '🪙', price_coins: '{n} coins', price_ad: 'an ad',
+      coinsShort: '', price_coins: '{n} coins', price_ad: 'an ad',
       slot_custom: 'Looks', choose: 'Choose', chosen: 'Chosen',
       skins_all: 'All skins', skins_biome: 'Biome skins',
       bundle_coins: 'Coin bundle', bundle_all: 'Everything',
