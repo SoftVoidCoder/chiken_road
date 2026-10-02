@@ -250,17 +250,48 @@ function step(title, fn) {
 
   step('монеты начисляются при подборе', () => {
     releaseAll();
-    G.start();
-    const rows = G.rows();
-    const withCoin = Object.keys(rows).map(Number).find((r) => rows[r].type === 'grass' && rows[r].coins.length);
-    if (withCoin === undefined) { return; }
-    const obj = rows[withCoin];
-    const before = G.G.totalCoins;
-    // встаём на соседнюю клетку и шагаем на монету — так срабатывает приземление
-    G.teleport(Math.max(0, obj.coins[0] - 1), withCoin - 1);
-    G.tryMove(1, 1);
-    tick(20);
-    assert(G.G.totalCoins > before, 'монета не начислилась (было ' + before + ', стало ' + G.G.totalCoins + ')');
+    // на дорогах теперь настоящий трафик, поэтому клетку для проверки
+    // выбираем там, где курицу гарантированно не собьют
+    let got = false, tries = 0;
+    while (!got && tries < 12) {
+      tries++;
+      G.start();
+      const rows = G.rows();
+      const cand = Object.keys(rows).map(Number).filter((r) => {
+        const o = rows[r];
+        return o.type === 'grass' && o.coins.length && rows[r - 1] && rows[r - 1].type === 'grass'
+          && rows[r].coins[0] > 0;
+      });
+      if (!cand.length) { continue; }
+      const row = cand[0], obj = rows[row];
+      const before = G.G.totalCoins;
+      // встаём на соседнюю клетку и шагаем на монету — так срабатывает приземление
+      G.teleport(obj.coins[0] - 1, row - 1);
+      G.tryMove(1, 1);
+      tick(20);
+      if (G.G.totalCoins > before) { got = true; }
+    }
+    assert(got, 'монета не начислилась за ' + tries + ' попыток');
+  });
+
+  step('награда за дистанцию: монеты капают каждые 10 рядов', () => {
+    releaseAll();
+    let ok = false, tries = 0;
+    while (!ok && tries < 30) {
+      tries++;
+      G.start();
+      const rows = G.rows();
+      const safe = (r) => rows[r] && rows[r].type === 'grass' && !(6 in rows[r].obstacles);
+      if (!safe(9) || !safe(10)) { continue; }
+      const before = G.G.totalCoins;
+      G.teleport(6, 9);
+      tick(2);
+      if (G.G.state !== 'playing') { continue; }
+      G.tryMove(0, 1);
+      tick(20);
+      if (G.G.totalCoins >= before + 2) { ok = true; }
+    }
+    assert(ok, 'награда за 10 рядов не начислилась за ' + tries + ' попыток');
   });
 
   step('ресайз и смена ориентации', () => {
@@ -283,6 +314,155 @@ function step(title, fn) {
     assert(G.G.state === 'paused' || G.G.state === 'over', 'вкладка не поставила игру на паузу: ' + G.G.state);
     documentStub.hidden = false;
     (listeners.document.visibilitychange || []).forEach((f) => f());
+  });
+
+  step('три уровня сложности: темп, поток и терпение орла', () => {
+    releaseAll();
+    assert(G.diffs().join(',') === 'easy,normal,hard', 'ожидались три режима, получено: ' + G.diffs().join(','));
+    const roadsSpeed = () => {
+      let sum = 0, n = 0;
+      const rows = G.rows();
+      for (const k of Object.keys(rows)) {
+        const r = rows[k];
+        if (r.type === 'road') { sum += r.speed; n++; }
+      }
+      return n ? sum / n : 0;
+    };
+    const avgSpeed = (id) => {
+      G.setDiff(id);
+      let sum = 0;
+      for (let i = 0; i < 3; i++) { G.start(); sum += roadsSpeed(); }
+      return sum / 3;
+    };
+    G.setDiff('easy');
+    const easyEagle = G.eagleLimit();
+    const easySpeed = avgSpeed('easy');
+    const hardEagle = (G.setDiff('hard'), G.eagleLimit());
+    const hardSpeed = avgSpeed('hard');
+    assert(hardEagle < easyEagle, 'орёл на «сложно» должен прилетать раньше: ' + hardEagle + ' vs ' + easyEagle);
+    assert(hardSpeed > easySpeed, 'на «сложно» поток быстрее: ' + easySpeed.toFixed(2) + ' vs ' + hardSpeed.toFixed(2));
+    assert(G.ramp(300) > 0 && G.ramp(300) <= 1.4, 'разгон вне разумных пределов: ' + G.ramp(300));
+    G.setDiff('normal');
+    assert(G.diff() === 'normal', 'не вернулись на обычную сложность: ' + G.diff());
+  });
+
+  step('рекорды считаются отдельно по каждой сложности', () => {
+    releaseAll();
+    G.setDiff('easy');
+    G.start();
+    G.G.score = 999; G.G.maxRow = 999;
+    G.die('car');
+    tick(90);
+    assert(G.G.bests.easy >= 999, 'рекорд «легко» не записан: ' + G.G.bests.easy);
+    G.setDiff('hard');
+    assert(G.G.bests.hard < 999, 'рекорд «сложно» не должен получить чужой результат: ' + G.G.bests.hard);
+    assert(storage.get('cc_best_easy') === '999', 'рекорд режима не сохранён: ' + storage.get('cc_best_easy'));
+    G.setDiff('normal');
+  });
+
+  step('новые 2D-модели машин выезжают на дороги', () => {
+    releaseAll();
+    const seen = new Set();
+    G.setDiff('normal');
+    for (let i = 0; i < 12; i++) {
+      G.start();
+      const rows = G.rows();
+      for (const k of Object.keys(rows)) {
+        const r = rows[k];
+        if (r.type === 'road' && r.items) { r.items.forEach((it) => seen.add(it.kind)); }
+      }
+    }
+    for (const kind of ['sport', 'pickup', 'ambulance', 'tractor', 'moto']) {
+      assert(seen.has(kind), 'машина «' + kind + '» ни разу не сгенерировалась');
+    }
+    assert(seen.size >= 10, 'мало типов машин в потоке: ' + seen.size + ' (' + [...seen].join(', ') + ')');
+  });
+
+  step('скины: покупка за монеты, надевание, сохранение', () => {
+    releaseAll();
+    const list = G.skinList();
+    assert(list.length >= 8, 'мало скинов: ' + list.length);
+    assert(G.skinCards() === list.length, 'карточки магазина не построены: ' + G.skinCards());
+    const paid = list.filter((s) => s.price > 0)[0];
+    assert(paid, 'нет ни одного платного скина');
+
+    G.setCoins(0);
+    assert(G.buySkin(paid.id) === false, 'скин купился без монет');
+    assert(G.skinList().filter((s) => s.id === paid.id)[0].owned === false, 'скин выдан бесплатно');
+
+    G.setCoins(paid.price + 5);
+    assert(G.buySkin(paid.id) === true, 'скин не купился при достатке монет');
+    assert(G.coins() === 5, 'монеты списались неверно: ' + G.coins());
+    assert(G.equipSkin(paid.id) === true, 'скин не наделся');
+    assert(G.skin() === paid.id, 'надет не тот скин: ' + G.skin());
+    assert(storage.get('cc_skin') === paid.id, 'выбранный скин не сохранился: ' + storage.get('cc_skin'));
+    assert(storage.get('cc_skins').indexOf(paid.id) >= 0, 'купленный скин не сохранился: ' + storage.get('cc_skins'));
+    assert(G.equipSkin('ninja') === false || G.skinList().filter((s) => s.id === 'ninja')[0].owned, 'надеть некупленный скин нельзя');
+  });
+
+  step('каждый скин рисуется без ошибок', () => {
+    releaseAll();
+    G.start();
+    G.setCoins(2000);
+    const ids = G.skinList().map((s) => s.id);
+    for (const id of ids) {
+      if (!G.skinList().filter((s) => s.id === id)[0].owned) {
+        assert(G.buySkin(id), 'скин ' + id + ' не купился');
+      }
+      assert(G.equipSkin(id), 'скин ' + id + ' не наделся');
+      tick(8);
+    }
+    G.equipSkin('classic');
+    tick(4);
+  });
+
+  step('меню паузы показывает забег и умеет выйти в меню', () => {
+    releaseAll();
+    G.setDiff('hard');
+    G.start();
+    for (let i = 0; i < 40 && G.G.score === 0; i++) {
+      G.tryMove(0, 1);
+      tick(12);
+      if (G.G.state !== 'playing') { G.start(); }
+    }
+    G.pause();
+    assert(G.G.state === 'paused', 'пауза не включилась: ' + G.G.state);
+    assert(listeners.byId.ovPause.classList.contains('on'), 'оверлей паузы не показан');
+    assert(listeners.byId.pScore.textContent === String(G.G.score), 'очки в паузе: ' + listeners.byId.pScore.textContent + ' vs ' + G.G.score);
+    assert(listeners.byId.pCoins.textContent !== '', 'монеты в паузе не выведены');
+    assert(listeners.byId.pDiff.textContent === 'Сложно', 'сложность в паузе: ' + listeners.byId.pDiff.textContent);
+
+    listeners.byId.btnResume._fire('click');
+    assert(G.G.state === 'playing', 'кнопка «продолжить» не вернула в игру: ' + G.G.state);
+    listeners.byId.btnPauseSound._fire('click');
+    listeners.byId.btnPauseSound._fire('click');
+
+    G.pause();
+    listeners.byId.btnToMenu._fire('click');
+    assert(G.G.state === 'menu', 'выход в меню не сработал: ' + G.G.state);
+    assert(listeners.byId.ovMenu.classList.contains('on'), 'меню не показано после выхода');
+    G.setDiff('normal');
+  });
+
+  step('экран скинов открывается из меню и из паузы', () => {
+    releaseAll();
+    G.toMenu();
+    assert(G.G.state === 'menu', 'не в меню: ' + G.G.state);
+    G.openSkins('menu');
+    assert(listeners.byId.ovSkins.classList.contains('on'), 'экран скинов не открылся из меню');
+    assert(listeners.byId.skCoins.textContent === String(G.coins()), 'кошелёк не совпадает с монетами');
+    listeners.byId.btnSkinsClose._fire('click');
+    assert(listeners.byId.ovMenu.classList.contains('on'), 'возврат из скинов в меню не сработал');
+
+    G.start();
+    G.pause();
+    G.openSkins('pause');
+    assert(listeners.byId.ovSkins.classList.contains('on'), 'экран скинов не открылся из паузы');
+    assert(!listeners.byId.ovPause.classList.contains('on'), 'пауза осталась под магазином');
+    listeners.byId.btnSkinsClose._fire('click');
+    assert(listeners.byId.ovPause.classList.contains('on'), 'возврат из скинов в паузу не сработал');
+    listeners.byId.btnResume._fire('click');
+    assert(G.G.state === 'playing', 'после магазина игра не продолжилась: ' + G.G.state);
   });
 
   step('продолжительная сессия: 4000 кадров с автопродвижением', () => {

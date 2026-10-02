@@ -3,9 +3,11 @@
    ----------------------------------------------------------------------------
    Вся графика рисуется процедурно на Canvas 2D: ни одной картинки, ни одного
    внешнего файла. У каждого объекта своя 2D-модель (спрайт) с анимацией:
-   курица (шаг, прыжок, squash&stretch), 6 типов машин, брёвна и лилии,
+   курица (шаг, прыжок, squash&stretch), 11 типов машин, брёвна и лилии,
    поезд с вагонами, деревья, камни, монеты, орёл.
    Вид строго сверху. Мир — бесконечная сетка рядов, генерируемых на ходу.
+   Три уровня сложности меняют плотность и скорость потока, поведение орла
+   и щедрость монет. Скины курицы покупаются за монеты и тоже нарисованы кодом.
    ========================================================================== */
 (function () {
   'use strict';
@@ -20,29 +22,79 @@
   var FIELD_HALF = COLS * TS / 2;
   var HOP_TIME = 0.135;        // длительность прыжка, сек
   var HOP_HOLD = 0.085;        // автоповтор при удержании клавиши
-  var IDLE_LIMIT = 7.5;        // сколько можно стоять до прилёта орла
   var EAGLE_DELAY = 1.25;      // сколько орёл пикирует
   var MIN_ROW = -6;            // докуда можно отойти назад от старта
   var ROWS_AHEAD = 42;         // на сколько рядов генерируем мир вперёд
   var PLAYER_SCREEN_Y = 0.63;  // положение курицы по вертикали экрана
 
+  // Три уровня сложности: множители темпа, зазоров, крутизны разгона,
+  // плотности препятствий, терпения орла (сек) и щедрости монет.
+  var DIFFS = {
+    easy:   { id: 'easy',   speed: 0.80, gap: 1.34, ramp: 0.70, pattern: 0.72, obs: 0.72, water: 0.86, eagle: 11.5, coin: 0.85, coin10: 2, row0: 6 },
+    normal: { id: 'normal', speed: 1.00, gap: 1.00, ramp: 1.00, pattern: 1.00, obs: 1.00, water: 1.00, eagle: 7.5,  coin: 1.00, coin10: 2, row0: 8 },
+    hard:   { id: 'hard',   speed: 1.22, gap: 0.78, ramp: 1.32, pattern: 1.28, obs: 1.16, water: 1.16, eagle: 5.4,  coin: 1.40, coin10: 3, row0: 9 }
+  };
+  var DIFF_ORDER = ['easy', 'normal', 'hard'];
+
   // 2D-модели машин: длина (в клетках) и множитель скорости
   var KIND = {
-    car:    { len: 1.05, sp: 1.00 },
-    taxi:   { len: 1.05, sp: 1.00 },
-    van:    { len: 1.42, sp: 0.90 },
-    bus:    { len: 2.30, sp: 0.76 },
-    truck:  { len: 2.75, sp: 0.68 },
-    police: { len: 1.05, sp: 1.16 }
+    car:       { len: 1.05, sp: 1.00 },
+    taxi:      { len: 1.05, sp: 1.00 },
+    van:       { len: 1.42, sp: 0.90 },
+    bus:       { len: 2.30, sp: 0.76 },
+    truck:     { len: 2.75, sp: 0.68 },
+    police:    { len: 1.05, sp: 1.18 },
+    sport:     { len: 1.16, sp: 1.34 },   // спорткар: низкий, с антикрылом
+    pickup:    { len: 1.52, sp: 0.94 },   // пикап: кабина + открытый кузов
+    ambulance: { len: 1.46, sp: 1.08 },   // скорая: белая, с крестом и мигалкой
+    tractor:   { len: 1.30, sp: 0.52 },   // трактор: еле ползёт, большие колёса
+    moto:      { len: 0.72, sp: 1.48 }    // мотоцикл: узкий и очень быстрый
   };
   var CAR_COLORS = {
-    car:    ['#e05a47', '#3d7ce0', '#59b36b', '#8b5cf6', '#e8792b', '#d94f7d'],
-    taxi:   ['#f5c542'],
-    van:    ['#e8ecf2', '#6b7c93', '#4aa3a3'],
-    bus:    ['#e0574a', '#3f7fd0'],
-    truck:  ['#8d99ae', '#b0552e'],
-    police: ['#f2f5fa']
+    car:       ['#e05a47', '#3d7ce0', '#59b36b', '#8b5cf6', '#e8792b', '#d94f7d'],
+    taxi:      ['#f5c542'],
+    van:       ['#e8ecf2', '#6b7c93', '#4aa3a3'],
+    bus:       ['#e0574a', '#3f7fd0'],
+    truck:     ['#8d99ae', '#b0552e'],
+    police:    ['#f2f5fa'],
+    sport:     ['#f04e3e', '#ffc93c', '#22c1c3', '#242c3a'],
+    pickup:    ['#c2703a', '#4f7d5a', '#6b7c93'],
+    ambulance: ['#f4f7fb'],
+    tractor:   ['#3f8f3a', '#c2703a', '#2f6fb0'],
+    moto:      ['#e11d48', '#2563eb', '#1f2937']
   };
+
+  /* --- скины курицы: палитра + украшения, всё тоже рисуется кодом ----------- */
+  // price — цена в монетах; size — масштаб модели; extra — функция украшений
+  var SKINS = [
+    { id: 'classic', price: 0, size: 1,
+      body: ['#ffffff', '#f4f6fb', '#d9dfea'], wing: '#e3e8f2', tail: ['#eef1f7', '#d7dce7'],
+      comb: '#e8453c', beak: '#f5a623', legs: '#f2a33c', eye: '#20242e', line: 'rgba(120,132,155,0.35)', extra: null },
+    { id: 'chick', price: 30, size: 0.80,
+      body: ['#fff0a8', '#ffd84d', '#eaa900'], wing: '#ffe066', tail: ['#fff3b0', '#ffe066'],
+      comb: '#ffb703', beak: '#ff9f1c', legs: '#ff9f1c', eye: '#20242e', line: 'rgba(170,120,20,0.35)', extra: 'fluff' },
+    { id: 'bandit', price: 70, size: 1,
+      body: ['#f7dcb6', '#e6bd8a', '#c99a63'], wing: '#d9ac78', tail: ['#f0d3ab', '#d9ac78'],
+      comb: '#c0392b', beak: '#f5a623', legs: '#e08b2e', eye: '#20242e', line: 'rgba(120,80,40,0.35)', extra: 'bandit' },
+    { id: 'ninja', price: 120, size: 1,
+      body: ['#4c5468', '#343b4d', '#222738'], wing: '#3d4557', tail: ['#3d4557', '#2a3040'],
+      comb: '#e8453c', beak: '#c9ced8', legs: '#c9ced8', eye: '#ffffff', line: 'rgba(10,14,22,0.5)', extra: 'ninja' },
+    { id: 'zombie', price: 170, size: 1,
+      body: ['#b9d47d', '#93b855', '#6f9339'], wing: '#a3c463', tail: ['#a3c463', '#7d9c46'],
+      comb: '#7d9c46', beak: '#c9b458', legs: '#7d9c46', eye: '#ff3b30', line: 'rgba(50,70,25,0.5)', extra: 'zombie' },
+    { id: 'robot', price: 230, size: 1,
+      body: ['#dbe4ef', '#b3c0d0', '#8b99ab'], wing: '#c3cedd', tail: ['#c3cedd', '#9aa6b6'],
+      comb: '#8892a3', beak: '#f2c94c', legs: '#9aa6b6', eye: '#22d3ee', line: 'rgba(50,62,80,0.5)', extra: 'robot' },
+    { id: 'gold', price: 300, size: 1,
+      body: ['#fff2bb', '#f2c94c', '#b8860b'], wing: '#ffdd77', tail: ['#ffe89a', '#c99a12'],
+      comb: '#c1121f', beak: '#ffe066', legs: '#e0a91c', eye: '#5a3d00', line: 'rgba(150,105,0,0.5)', extra: 'gold' },
+    { id: 'rainbow', price: 400, size: 1,
+      body: null, wing: null, tail: null,
+      comb: '#ffffff', beak: '#ffd75e', legs: '#ffd75e', eye: '#1d2b3f', line: 'rgba(40,40,80,0.35)', extra: 'rainbow' }
+  ];
+  var SKIN_BY_ID = {};
+  for (var sk0 = 0; sk0 < SKINS.length; sk0++) { SKIN_BY_ID[SKINS[sk0].id] = SKINS[sk0]; }
+
 
   /* ==========================================================================
      2. CANVAS
@@ -84,6 +136,8 @@
     t: 0, runTime: 0,
     score: 0, best: 0, maxRow: 0,
     coins: 0, totalCoins: 0,
+    diffId: 'normal', bests: { easy: 0, normal: 0, hard: 0 },
+    skin: 'classic', skins: ['classic'],
     rows: {}, genUntil: MIN_ROW - 1, pattern: null,
     particles: [], popups: [],
     shake: 0, flash: 0, flashColor: '255,80,80',
@@ -91,6 +145,22 @@
     reviveUsed: false, runStart: 0, muted: false,
     hintShown: false
   };
+
+  function diff() { return DIFFS[G.diffId] || DIFFS.normal; }
+  function eagleLimit() { return diff().eagle; }
+  // рекорд конкретного режима: у каждой сложности своя таблица рекордов
+  function bestFor(id) { return Math.max(0, G.bests[id || G.diffId] || 0); }
+  function profile() {
+    return {
+      best: G.best,
+      bests: { easy: G.bests.easy, normal: G.bests.normal, hard: G.bests.hard },
+      coins: G.totalCoins,
+      skins: G.skins.slice(),
+      skin: G.skin,
+      diff: G.diffId
+    };
+  }
+  function saveProfile() { Pl.save(profile()); }
 
   var pl = {
     px: 0, py: 0, hop: null, log: null,
@@ -201,7 +271,8 @@
   /* ==========================================================================
      6. ГЕНЕРАЦИЯ МИРА
      ========================================================================== */
-  function difficulty(row) { return clamp((row - 8) / 240, 0, 1); }
+  // разгон внутри забега: чем дальше, тем злее; крутизна зависит от сложности
+  function ramp(row) { return clamp((row - diff().row0) / 240, 0, 1) * diff().ramp; }
 
   function shuffle(a) {
     for (var i = a.length - 1; i > 0; i--) { var j = (Math.random() * (i + 1)) | 0; var t = a[i]; a[i] = a[j]; a[j] = t; }
@@ -214,12 +285,18 @@
     var dir = Math.random() < 0.5 ? 1 : -1;
     var speedT = opts.speedT;                      // клеток в секунду
     var kind = opts.kind ? opts.kind(d) : null;
-    var len = opts.len ? opts.len(d, kind) : kind.len;
-    var spMul = kind ? KIND[kind].sp : 1;
+    // длина: либо своя функция (брёвна), либо из таблицы KIND по типу машины
+    var len = opts.len ? opts.len(d, kind) : (kind && KIND[kind] ? KIND[kind].len : 1);
+    var spMul = (kind && KIND[kind]) ? KIND[kind].sp : 1;
     var vT = speedT * spMul;
     var gap = Math.max(opts.minGap, vT * opts.gapTime - d * opts.gapTighten);
     var span = COLS + 9;
+    // страховка: ни одна из величин не должна оказаться NaN, иначе лента
+    // молча останется пустой (именно так дороги когда-то были без машин)
+    if (!isFinite(len) || len <= 0) { len = 1; }
+    if (!isFinite(gap) || gap < 0) { gap = opts.minGap || 1; }
     var count = Math.max(1, Math.floor(span / (len + gap)));
+    if (!isFinite(count) || count < 1) { count = 1; }
     var spacing = span / count;
     var slack = Math.max(0, spacing - len - gap);
     var L = span * TS;
@@ -234,13 +311,13 @@
   function genGrass(r, d, safe) {
     var row = { type: 'grass', r: r, obstacles: {}, coins: [] };
     if (!safe) {
-      var maxObs = Math.min(COLS - 2, Math.round(1 + d * 5 + Math.random() * 2));
+      var maxObs = Math.min(COLS - 2, Math.round((1 + d * 5 + Math.random() * 2) * diff().obs));
       var order = shuffle(cols());
       for (var i = 0; i < maxObs; i++) {
         var c = order[i];
         row.obstacles[c] = hash01(r * 131 + c * 17) < 0.62 ? 'tree' : 'rock';
       }
-      if (Math.random() < 0.17) {
+      if (Math.random() < 0.22 * diff().coin) {
         var c0 = (Math.random() * COLS) | 0;
         var n = 1 + ((Math.random() * 3) | 0);
         for (var k = 0; k < n; k++) {
@@ -255,17 +332,22 @@
   function genRoad(r, d) {
     var row = { type: 'road', r: r };
     var lane = makeLane(r, d, {
-      speedT: 1.7 + Math.random() * 2.1 + d * 2.4,
+      speedT: (1.7 + Math.random() * 2.1 + d * 2.4) * diff().speed,
       kind: function () {
         var q = Math.random();
-        if (q < 0.40) { return 'car'; }
-        if (q < 0.55) { return 'taxi'; }
-        if (q < 0.68) { return 'van'; }
-        if (q < 0.81) { return 'bus'; }
-        if (q < 0.91) { return 'truck'; }
-        return 'police';
+        if (q < 0.30) { return 'car'; }
+        if (q < 0.41) { return 'taxi'; }
+        if (q < 0.51) { return 'van'; }
+        if (q < 0.60) { return 'bus'; }
+        if (q < 0.68) { return 'truck'; }
+        if (q < 0.74) { return 'police'; }
+        if (q < 0.82) { return 'sport'; }       // быстрый и юркий
+        if (q < 0.88) { return 'pickup'; }
+        if (q < 0.93) { return 'ambulance'; }
+        if (q < 0.97) { return 'tractor'; }     // медленный, но длинный
+        return 'moto';                          // самый быстрый в игре
       },
-      minGap: 1.25, gapTime: 0.62, gapTighten: 0.16
+      minGap: 1.25 * diff().gap, gapTime: 0.62 * diff().gap, gapTighten: 0.16 * diff().ramp
     });
     row.dir = lane.dir; row.items = lane.items; row.loop = lane.loop; row.speed = lane.speed;
     return row;
@@ -274,9 +356,9 @@
   function genWater(r, d) {
     var row = { type: 'water', r: r, phase: rnd(0, 6.28) };
     var lane = makeLane(r, d, {
-      speedT: 0.65 + Math.random() * 1.5,
+      speedT: (0.65 + Math.random() * 1.5) * diff().water,
       len: function () { return 1.8 + Math.random() * 1.4; },
-      minGap: 1.15, gapTime: 0.85, gapTighten: 0.05
+      minGap: 1.15 * diff().gap, gapTime: 0.85 * diff().gap, gapTighten: 0.05 * diff().ramp
     });
     for (var i = 0; i < lane.items.length; i++) {
       lane.items[i].kind = Math.random() < 0.78 ? 'log' : 'lily';
@@ -289,8 +371,8 @@
   function genRail(r, d) {
     return {
       type: 'rail', r: r, dir: Math.random() < 0.5 ? 1 : -1,
-      timer: rnd(1.6, 4.4), warn: 1.15, train: null,
-      trainSpeed: (9 + d * 3.5) * TS, trainLen: 8.4, d: d
+      timer: rnd(1.6, 4.4) / diff().speed, warn: 1.15, train: null,
+      trainSpeed: (9 + d * 3.5) * TS * diff().speed, trainLen: 8.4, d: d
     };
   }
 
@@ -299,15 +381,16 @@
     // после воды и рельсов — обязательно передышка (иначе игрок окажется в ловушке)
     if (prev === 'water' || prev === 'rail') { return { kind: 'grass', left: 1 + ((Math.random() * 2) | 0) }; }
     var q = Math.random();
-    if (q < 0.44) { return { kind: 'road', left: 1 + ((Math.random() * (1 + d * 3.4)) | 0) }; }
-    if (q < 0.62) { return { kind: 'water', left: 1 + ((Math.random() * (1 + d * 2)) | 0) }; }
-    if (q < 0.73) { return { kind: 'rail', left: 1 }; }
+    var pRoad = 0.44 * diff().pattern, pWater = 0.18 * diff().pattern;
+    if (q < pRoad) { return { kind: 'road', left: 1 + ((Math.random() * (1 + d * 3.4)) | 0) }; }
+    if (q < pRoad + pWater) { return { kind: 'water', left: 1 + ((Math.random() * (1 + d * 2)) | 0) }; }
+    if (q < pRoad + pWater + 0.11) { return { kind: 'rail', left: 1 }; }
     return { kind: 'grass', left: 1 + ((Math.random() * 2) | 0) };
   }
 
   function genNextRow() {
     var r = G.genUntil + 1;
-    var d = difficulty(r);
+    var d = ramp(r);
     var row;
     if (r <= 3) {
       row = genGrass(r, d, true);                     // безопасная стартовая зона
@@ -419,6 +502,15 @@
       G.score = Math.max(0, row);
       pl.idle = 0;
       hideHint();
+      // награда за дистанцию: каждые 10 рядов капает немного монет, иначе
+      // первые скины пришлось бы копить сотнями забегов
+      if (row > 0 && row % 10 === 0) {
+        var bonus = diff().coin10 || 2;
+        G.coins += bonus; G.totalCoins += bonus;
+        popup(pl.px, pl.py - TS * 0.75, '+' + bonus, '#ffd75e');
+        burst(pl.px, pl.py, 12, '#ffd75e', 'sparkle', 120);
+        Sound.coin();
+      }
       syncHUD();
     }
   }
@@ -465,7 +557,7 @@
   function updateEagle(dt) {
     if (!pl.alive) { return; }
     if (!G.eagle) {
-      if (pl.idle > IDLE_LIMIT) {
+      if (pl.idle > eagleLimit()) {
         G.eagle = { t: 0, x: pl.px, y: pl.py - 260 };
         Sound.screech();
         showHint(Pl.t('hintEagle'));
@@ -546,7 +638,7 @@
       updateEagle(dt);
 
       // подсказка про орла заранее
-      if (pl.alive && !G.hintShown && pl.idle > IDLE_LIMIT - 3) { showHint(Pl.t('hintEagle')); }
+      if (pl.alive && !G.hintShown && pl.idle > eagleLimit() - 3) { showHint(Pl.t('hintEagle')); }
     } else {
       G.deathT += dt;
       if (G.deathT > 0.95) { gameOver(); return; }
@@ -569,9 +661,10 @@
     if (G.state === 'over') { return; }
     G.state = 'over';
     Pl.gameplayStop();
-    var isRecord = G.score > G.best;
-    if (isRecord) { G.best = G.score; }
-    Pl.save({ best: G.best, coins: G.totalCoins });
+    var isRecord = G.score > bestFor();
+    if (isRecord) { G.bests[G.diffId] = G.score; }
+    G.best = Math.max(G.best, G.score, bestFor());
+    saveProfile();
     Pl.submitScore(G.score);
     if (isRecord && G.score > 0) { Sound.record(); }
     UI.over(isRecord);
@@ -883,6 +976,118 @@
       }
       ctx.fillStyle = '#dfe6f0';
       rr(len / 2 - TS * 0.32, -TS * 0.24, TS * 0.28, TS * 0.48, 3); ctx.fill();
+    } else if (kind === 'sport') {
+      // спорткар: приземистый клин, антикрыло, гоночная полоса
+      ctx.fillStyle = body;
+      rr(-len / 2, -TS * 0.33, len, TS * 0.66, 11); ctx.fill();
+      var sg = ctx.createLinearGradient(0, -TS * 0.33, 0, TS * 0.33);
+      sg.addColorStop(0, 'rgba(255,255,255,0.35)');
+      sg.addColorStop(0.5, 'rgba(255,255,255,0.05)');
+      sg.addColorStop(1, dark);
+      ctx.fillStyle = sg;
+      rr(-len / 2, -TS * 0.33, len, TS * 0.66, 11); ctx.fill();
+      // клин-нос
+      ctx.fillStyle = body;
+      ctx.beginPath();
+      ctx.moveTo(len / 2 - 4, -TS * 0.30); ctx.lineTo(len / 2 + 6, 0); ctx.lineTo(len / 2 - 4, TS * 0.30);
+      ctx.closePath(); ctx.fill();
+      // кабина-пузырь
+      ctx.fillStyle = 'rgba(18,24,38,0.82)';
+      rr(-len * 0.16, -TS * 0.24, len * 0.36, TS * 0.48, 8); ctx.fill();
+      // полоса по центру
+      ctx.fillStyle = 'rgba(255,255,255,0.7)';
+      ctx.fillRect(-len * 0.42, -3, len * 0.32, 6);
+      // антикрыло
+      ctx.fillStyle = '#2b3038';
+      rr(-len / 2 - 4, -TS * 0.42, 7, TS * 0.84, 3); ctx.fill();
+      ctx.fillStyle = body;
+      ctx.fillRect(-len / 2 + 2, -TS * 0.48, 5, 5);
+      ctx.fillRect(-len / 2 + 2, TS * 0.33, 5, 5);
+    } else if (kind === 'pickup') {
+      // пикап: кабина спереди, открытый кузов с рёбрами сзади
+      ctx.fillStyle = body;
+      rr(-len / 2, -TS * 0.31, len, TS * 0.62, 6); ctx.fill();
+      var pg = ctx.createLinearGradient(0, -TS * 0.31, 0, TS * 0.31);
+      pg.addColorStop(0, 'rgba(255,255,255,0.26)'); pg.addColorStop(1, dark);
+      ctx.fillStyle = pg;
+      rr(-len / 2, -TS * 0.31, len, TS * 0.62, 6); ctx.fill();
+      // открытый кузов
+      ctx.fillStyle = '#4a3627';
+      rr(-len / 2 + 3, -TS * 0.22, len * 0.52, TS * 0.44, 3); ctx.fill();
+      ctx.strokeStyle = 'rgba(255,255,255,0.14)'; ctx.lineWidth = 1.6;
+      for (var pk = 1; pk <= 3; pk++) {
+        var pkx = -len / 2 + 3 + len * 0.52 * (pk / 4);
+        ctx.beginPath(); ctx.moveTo(pkx, -TS * 0.20); ctx.lineTo(pkx, TS * 0.20); ctx.stroke();
+      }
+      // кабина
+      ctx.fillStyle = 'rgba(18,24,38,0.80)';
+      rr(len * 0.06, -TS * 0.25, len * 0.20, TS * 0.50, 5); ctx.fill();
+      ctx.fillStyle = 'rgba(255,255,255,0.18)';
+      rr(len * 0.28, -TS * 0.24, len * 0.12, TS * 0.48, 5); ctx.fill();
+      // решётка на носу
+      ctx.fillStyle = 'rgba(255,255,255,0.5)';
+      ctx.fillRect(len / 2 - 8, -TS * 0.26, 4, TS * 0.52);
+    } else if (kind === 'ambulance') {
+      // скорая: белый фургон, красные полоса и крест, проблесковая мигалка
+      ctx.fillStyle = body;
+      rr(-len / 2, -TS * 0.31, len * 0.72, TS * 0.62, 5); ctx.fill();
+      ctx.fillStyle = 'rgba(0,0,0,0.10)';
+      rr(-len / 2 + 2, -TS * 0.23, len * 0.72 - 4, TS * 0.46, 3); ctx.fill();
+      ctx.fillStyle = body;
+      rr(len * 0.12, -TS * 0.30, len * 0.38, TS * 0.60, 8); ctx.fill();
+      // полосы
+      ctx.fillStyle = '#e03b30';
+      ctx.fillRect(-len / 2, -TS * 0.30, len * 0.72, TS * 0.10);
+      ctx.fillRect(len * 0.12, -TS * 0.29, len * 0.38, TS * 0.09);
+      // крест на борту
+      ctx.fillRect(-len * 0.30 - 2, -TS * 0.11, 4, TS * 0.22);
+      ctx.fillRect(-len * 0.30 - 8, -TS * 0.02, 16, 4);
+      // лобовое
+      ctx.fillStyle = 'rgba(18,24,38,0.80)';
+      rr(len * 0.33, -TS * 0.24, len * 0.15, TS * 0.48, 4); ctx.fill();
+      // мигалка: красный / синий / белый
+      var bl = Math.floor(G.t * 8) % 3;
+      ctx.fillStyle = bl === 0 ? '#ef4444' : (bl === 1 ? '#3b82f6' : '#dfe6f0');
+      rr(-len * 0.06, -TS * 0.09, len * 0.12, TS * 0.18, 3); ctx.fill();
+    } else if (kind === 'tractor') {
+      // трактор: кабина с дугой, труба и огромные задние колёса
+      ctx.fillStyle = '#3a4152';
+      rr(-len * 0.34, -TS * 0.27, len * 0.34, TS * 0.54, 6); ctx.fill();
+      ctx.fillStyle = 'rgba(255,255,255,0.32)';
+      rr(-len * 0.30, -TS * 0.20, len * 0.26, TS * 0.40, 4); ctx.fill();
+      ctx.fillStyle = body;
+      rr(len * 0.02, -TS * 0.25, len * 0.46, TS * 0.50, 6); ctx.fill();
+      ctx.fillStyle = 'rgba(255,255,255,0.18)';
+      rr(len * 0.02, -TS * 0.25, len * 0.46, TS * 0.14, 6); ctx.fill();
+      // выхлопная труба
+      ctx.fillStyle = 'rgba(255,255,255,0.12)';
+      ctx.beginPath(); ctx.arc(len * 0.34, -TS * 0.31, 5.6, 0, 6.2832); ctx.fill();
+      ctx.fillStyle = '#5a6472';
+      ctx.beginPath(); ctx.arc(len * 0.34, -TS * 0.31, 3.2, 0, 6.2832); ctx.fill();
+      // дуга безопасности
+      ctx.strokeStyle = '#f2c94c'; ctx.lineWidth = 3;
+      ctx.beginPath(); ctx.arc(-len * 0.17, 0, TS * 0.33, -Math.PI * 0.88, -Math.PI * 0.12); ctx.stroke();
+    } else if (kind === 'moto') {
+      // мотоцикл: узкая рама, бак, руль и гонщик в шлеме
+      ctx.fillStyle = '#20242e';
+      rr(-len / 2, -TS * 0.10, len, TS * 0.20, 5); ctx.fill();
+      ctx.fillStyle = body;
+      rr(-len * 0.26, -TS * 0.17, len * 0.52, TS * 0.34, 6); ctx.fill();
+      ctx.fillStyle = 'rgba(0,0,0,0.38)';
+      rr(-len * 0.32, -TS * 0.13, len * 0.16, TS * 0.26, 3); ctx.fill();
+      // руль
+      ctx.fillStyle = '#c9ced8';
+      ctx.fillRect(len * 0.16, -TS * 0.33, 4, TS * 0.66);
+      // гонщик
+      ctx.fillStyle = '#f2f5fa';
+      ctx.beginPath(); ctx.arc(-len * 0.02, 0, TS * 0.15, 0, 6.2832); ctx.fill();
+      ctx.fillStyle = 'rgba(18,24,38,0.85)';
+      ctx.beginPath();
+      ctx.arc(-len * 0.02 + 1.5, 0, TS * 0.15, -1.25, 1.25);
+      ctx.lineTo(-len * 0.02 + 1.5, 0);
+      ctx.closePath(); ctx.fill();
+      ctx.fillStyle = body;
+      ctx.beginPath(); ctx.ellipse(-len * 0.16, 0, TS * 0.18, TS * 0.14, 0, 0, 6.2832); ctx.fill();
     } else {
       // кузов
       var g = ctx.createLinearGradient(0, -TS * 0.3, 0, TS * 0.3);
@@ -905,18 +1110,36 @@
 
     // колёса
     ctx.fillStyle = '#20242e';
-    ctx.fillRect(-len / 2 + 7, -TS * 0.36, 10, 6);
-    ctx.fillRect(len / 2 - 17, -TS * 0.36, 10, 6);
-    ctx.fillRect(-len / 2 + 7, TS * 0.30, 10, 6);
-    ctx.fillRect(len / 2 - 17, TS * 0.30, 10, 6);
+    if (kind === 'moto') {
+      rr(-len / 2 - 4, -3.5, 11, 7, 3); ctx.fill();
+      rr(len / 2 - 7, -3.5, 11, 7, 3); ctx.fill();
+    } else if (kind === 'tractor') {
+      ctx.fillRect(-len / 2 - 1, -TS * 0.44, 13, 11);
+      ctx.fillRect(-len / 2 - 1, TS * 0.22, 13, 11);
+      ctx.fillStyle = '#3a4152';
+      ctx.fillRect(len / 2 - 16, -TS * 0.34, 9, 7);
+      ctx.fillRect(len / 2 - 16, TS * 0.16, 9, 7);
+    } else {
+      ctx.fillRect(-len / 2 + 7, -TS * 0.36, 10, 6);
+      ctx.fillRect(len / 2 - 17, -TS * 0.36, 10, 6);
+      ctx.fillRect(-len / 2 + 7, TS * 0.30, 10, 6);
+      ctx.fillRect(len / 2 - 17, TS * 0.30, 10, 6);
+    }
 
     // фары и стопы
-    ctx.fillStyle = '#fff3c4';
-    ctx.fillRect(len / 2 - 5, -TS * 0.26, 4, 7);
-    ctx.fillRect(len / 2 - 5, TS * 0.18, 4, 7);
-    ctx.fillStyle = '#ff5b4a';
-    ctx.fillRect(-len / 2 + 1, -TS * 0.26, 3.5, 7);
-    ctx.fillRect(-len / 2 + 1, TS * 0.18, 3.5, 7);
+    if (kind === 'moto') {
+      ctx.fillStyle = '#fff3c4';
+      ctx.beginPath(); ctx.arc(len / 2 - 1, 0, 3.6, 0, 6.2832); ctx.fill();
+      ctx.fillStyle = '#ff5b4a';
+      rr(-len / 2 - 3, -3, 4, 6, 2); ctx.fill();
+    } else {
+      ctx.fillStyle = '#fff3c4';
+      ctx.fillRect(len / 2 - 5, -TS * 0.26, 4, 7);
+      ctx.fillRect(len / 2 - 5, TS * 0.18, 4, 7);
+      ctx.fillStyle = '#ff5b4a';
+      ctx.fillRect(-len / 2 + 1, -TS * 0.26, 3.5, 7);
+      ctx.fillRect(-len / 2 + 1, TS * 0.18, 3.5, 7);
+    }
 
     if (kind === 'police') {
       // мигалка
@@ -975,7 +1198,31 @@
   }
 
   /* --- курица (главная 2D-модель) ------------------------------------------ */
+  // Модель одна, а скинов много: палитра и украшения приходят из таблицы SKINS.
+  // Чтобы те же спрайты можно было рисовать в маленькие превью на экране
+  // магазина, контекст рисования на время подменяется.
+  function withCtx(g, fn) {
+    var prev = ctx;
+    ctx = g;
+    try { fn(); } finally { ctx = prev; }
+  }
+  function skinOf(id) { return SKIN_BY_ID[id] || SKINS[0]; }
+  // «Радуга» пересчитывает палитру каждый кадр, остальные скины статичны
+  function skinColors(sk, t) {
+    if (sk.body) { return sk; }
+    var h = (t * 70) % 360;
+    return {
+      size: sk.size, extra: sk.extra, comb: sk.comb, beak: sk.beak, legs: sk.legs,
+      eye: sk.eye, line: sk.line,
+      body: ['hsl(' + h + ',88%,74%)', 'hsl(' + ((h + 60) % 360) + ',88%,60%)', 'hsl(' + ((h + 120) % 360) + ',82%,48%)'],
+      wing: 'hsl(' + ((h + 180) % 360) + ',85%,66%)',
+      tail: ['hsl(' + ((h + 240) % 360) + ',88%,76%)', 'hsl(' + ((h + 300) % 360) + ',82%,60%)']
+    };
+  }
+
   function drawChicken(x, y, hopT, facing, dead, t) {
+    var sk = skinColors(skinOf(G.skin), t);
+    var body = sk.body[0], bodyMid = sk.body[1], bodyDark = sk.body[2];
     var airborne = hopT !== null;
     var arc = airborne ? Math.sin(Math.PI * hopT) : 0;
     var lift = arc * 20;
@@ -987,6 +1234,7 @@
 
     ctx.save();
     ctx.translate(x, y - lift);
+    ctx.scale(sk.size || 1, sk.size || 1);         // цыплёнок меньше остальных
     ctx.scale(1 - breathe, 1 + breathe);
     ctx.scale(1 / sq, sq);
     var ang = facing === 'up' ? 0 : facing === 'right' ? Math.PI / 2 : facing === 'down' ? Math.PI : -Math.PI / 2;
@@ -996,60 +1244,63 @@
 
     // лапки (прячутся в прыжке)
     if (!airborne) {
-      ctx.strokeStyle = '#f2a33c'; ctx.lineWidth = 3; ctx.lineCap = 'round';
+      ctx.strokeStyle = sk.legs; ctx.lineWidth = 3; ctx.lineCap = 'round';
       ctx.beginPath(); ctx.moveTo(-5, 13); ctx.lineTo(-6, 20); ctx.lineTo(-10, 21); ctx.stroke();
       ctx.beginPath(); ctx.moveTo(5, 13); ctx.lineTo(6, 20); ctx.lineTo(10, 21); ctx.stroke();
     }
     // хвост
-    ctx.fillStyle = '#eef1f7';
+    ctx.fillStyle = sk.tail[0];
     ctx.beginPath(); ctx.ellipse(0, 16, 11, 7, 0, 0, 6.2832); ctx.fill();
-    ctx.fillStyle = '#d7dce7';
+    ctx.fillStyle = sk.tail[1];
     ctx.beginPath(); ctx.ellipse(-5, 19, 5, 6, -0.5, 0, 6.2832); ctx.fill();
     ctx.beginPath(); ctx.ellipse(5, 19, 5, 6, 0.5, 0, 6.2832); ctx.fill();
 
     // крылья
     ctx.save();
     ctx.translate(-12, 2); ctx.rotate(-flap);
-    ctx.fillStyle = '#e3e8f2';
+    ctx.fillStyle = sk.wing;
     ctx.beginPath(); ctx.ellipse(0, 0, 7, 12, 0.15, 0, 6.2832); ctx.fill();
     ctx.restore();
     ctx.save();
     ctx.translate(12, 2); ctx.rotate(flap);
-    ctx.fillStyle = '#e3e8f2';
+    ctx.fillStyle = sk.wing;
     ctx.beginPath(); ctx.ellipse(0, 0, 7, 12, -0.15, 0, 6.2832); ctx.fill();
     ctx.restore();
 
     // тело
     var bg = ctx.createLinearGradient(-10, -12, 10, 14);
-    bg.addColorStop(0, '#ffffff'); bg.addColorStop(0.6, '#f4f6fb'); bg.addColorStop(1, '#d9dfea');
+    bg.addColorStop(0, body); bg.addColorStop(0.6, bodyMid); bg.addColorStop(1, bodyDark);
     ctx.fillStyle = bg;
     ctx.beginPath(); ctx.ellipse(0, 1, 14, 16, 0, 0, 6.2832); ctx.fill();
-    ctx.strokeStyle = 'rgba(120,132,155,0.35)'; ctx.lineWidth = 1.2; ctx.stroke();
+    ctx.strokeStyle = sk.line; ctx.lineWidth = 1.2; ctx.stroke();
 
     // голова
-    ctx.fillStyle = '#ffffff';
+    ctx.fillStyle = body;
     ctx.beginPath(); ctx.arc(0, -14, 9.5, 0, 6.2832); ctx.fill();
-    ctx.strokeStyle = 'rgba(120,132,155,0.30)'; ctx.stroke();
+    ctx.strokeStyle = sk.line; ctx.stroke();
 
     // гребешок
-    ctx.fillStyle = '#e8453c';
+    ctx.fillStyle = sk.comb;
     ctx.beginPath(); ctx.arc(-3.4, -21.5, 3.2, 0, 6.2832); ctx.fill();
     ctx.beginPath(); ctx.arc(1.6, -22.5, 3.4, 0, 6.2832); ctx.fill();
     ctx.beginPath(); ctx.arc(6, -20, 2.8, 0, 6.2832); ctx.fill();
 
     // клюв
-    ctx.fillStyle = '#f5a623';
+    ctx.fillStyle = sk.beak;
     ctx.beginPath();
     ctx.moveTo(-3.6, -22.5); ctx.lineTo(3.6, -22.5); ctx.lineTo(0, -29.5);
     ctx.closePath(); ctx.fill();
 
     // глаза
-    ctx.fillStyle = '#20242e';
+    ctx.fillStyle = sk.eye;
     ctx.beginPath(); ctx.arc(-4.6, -15.5, 1.7, 0, 6.2832); ctx.fill();
     ctx.beginPath(); ctx.arc(4.6, -15.5, 1.7, 0, 6.2832); ctx.fill();
-    ctx.fillStyle = 'rgba(255,255,255,0.85)';
+    ctx.fillStyle = sk.eye === '#ffffff' ? 'rgba(32,36,46,0.8)' : 'rgba(255,255,255,0.85)';
     ctx.beginPath(); ctx.arc(-5.1, -16.1, 0.6, 0, 6.2832); ctx.fill();
     ctx.beginPath(); ctx.arc(4.1, -16.1, 0.6, 0, 6.2832); ctx.fill();
+
+    // украшения скина (рисуются поверх и вращаются вместе с курицей)
+    if (sk.extra) { drawSkinExtra(sk, t, airborne); }
 
     ctx.restore();
 
@@ -1057,9 +1308,130 @@
     if (G.invuln > 0) {
       ctx.strokeStyle = 'rgba(255,230,128,' + (0.35 + 0.35 * Math.sin(t * 14)) + ')';
       ctx.lineWidth = 2.5;
-      ctx.beginPath(); ctx.arc(x, y - 2, 24, 0, 6.2832); ctx.stroke();
+      ctx.beginPath(); ctx.arc(x, y - 2, 24 * (sk.size || 1), 0, 6.2832); ctx.stroke();
     }
   }
+
+  // Украшения скинов: шляпы, швы, визоры, блики — всё тоже кодом
+  function drawSkinExtra(sk, t, airborne) {
+    var i, a;
+    if (sk.extra === 'fluff') {                     // цыплёнок: пух и хохолок
+      ctx.fillStyle = 'rgba(255,255,255,0.55)';
+      for (i = 0; i < 7; i++) {
+        a = (i / 7) * 6.2832 + t * 0.6;
+        ctx.beginPath();
+        ctx.arc(Math.cos(a) * 15, 2 + Math.sin(a) * 17, 3.6 + Math.sin(t * 5 + i) * 0.5, 0, 6.2832);
+        ctx.fill();
+      }
+      ctx.fillStyle = sk.comb;
+      ctx.beginPath(); ctx.arc(0, -25.5, 3.2, 0, 6.2832); ctx.fill();
+      return;
+    }
+    if (sk.extra === 'bandit') {                    // разбойник: бандана и повязка
+      ctx.fillStyle = '#2b3140';
+      rr(-11, -19.5, 22, 7, 2.5); ctx.fill();
+      ctx.beginPath();
+      ctx.moveTo(-10, -18); ctx.lineTo(-19, -22 + Math.sin(t * 4) * 1.6); ctx.lineTo(-17, -13);
+      ctx.closePath(); ctx.fill();
+      ctx.fillStyle = 'rgba(0,0,0,0.9)';
+      ctx.beginPath(); ctx.arc(-4.6, -15.5, 3.4, 0, 6.2832); ctx.fill();
+      ctx.strokeStyle = 'rgba(0,0,0,0.9)'; ctx.lineWidth = 1.4;
+      ctx.beginPath(); ctx.moveTo(-8, -16.6); ctx.lineTo(9, -18.4); ctx.stroke();
+      return;
+    }
+    if (sk.extra === 'ninja') {                     // ниндзя: лента с развевающимися концами
+      ctx.fillStyle = '#e8453c';
+      rr(-11, -19.5, 22, 6.5, 2.5); ctx.fill();
+      ctx.beginPath();
+      ctx.moveTo(-9, -18);
+      ctx.lineTo(-20 - Math.sin(t * 5) * 2, -23 + Math.sin(t * 6) * 3);
+      ctx.lineTo(-19, -16 + Math.cos(t * 5) * 2.5);
+      ctx.closePath(); ctx.fill();
+      ctx.fillStyle = 'rgba(255,255,255,0.25)';
+      rr(-11, -19.5, 22, 2, 1); ctx.fill();
+      return;
+    }
+    if (sk.extra === 'zombie') {                    // зомби: швы и заплатка
+      ctx.strokeStyle = 'rgba(40,60,20,0.75)'; ctx.lineWidth = 1.4;
+      for (i = -1; i <= 1; i++) {
+        ctx.beginPath();
+        ctx.moveTo(-9, 4 + i * 7);
+        ctx.lineTo(9, 3 + i * 7);
+        ctx.stroke();
+      }
+      ctx.fillStyle = 'rgba(90,110,60,0.85)';
+      rr(4, -4, 9, 8, 2); ctx.fill();
+      ctx.fillStyle = 'rgba(255,255,255,0.20)';
+      ctx.beginPath(); ctx.arc(-6, -2, 4, 0, 6.2832); ctx.fill();
+      return;
+    }
+    if (sk.extra === 'robot') {                     // робот: визор, антенна, заклёпки
+      ctx.fillStyle = '#1f2937';
+      rr(-8, -18, 16, 5.5, 2.5); ctx.fill();
+      ctx.fillStyle = 'rgba(80,230,255,' + (0.55 + 0.45 * Math.sin(t * 9)) + ')';
+      rr(-6.5, -17, 6, 3, 1.4); ctx.fill();
+      rr(0.5, -17, 6, 3, 1.4); ctx.fill();
+      ctx.strokeStyle = '#9aa6b6'; ctx.lineWidth = 1.6;
+      ctx.beginPath(); ctx.moveTo(2, -23); ctx.lineTo(5, -30); ctx.stroke();
+      ctx.fillStyle = (Math.floor(t * 4) % 2) ? '#ff3b30' : '#5c1f1c';
+      ctx.beginPath(); ctx.arc(5.4, -30.6, 2.2, 0, 6.2832); ctx.fill();
+      ctx.fillStyle = 'rgba(255,255,255,0.35)';
+      for (i = 0; i < 4; i++) {
+        ctx.beginPath(); ctx.arc(-9 + i * 6, 12, 1.3, 0, 6.2832); ctx.fill();
+      }
+      return;
+    }
+    if (sk.extra === 'gold') {                      // золотая: бегущий блик и искры
+      ctx.save();
+      ctx.globalAlpha = 0.5;
+      ctx.beginPath(); ctx.ellipse(0, 1, 14, 16, 0, 0, 6.2832); ctx.clip();
+      var sx = -20 + ((t * 26) % 40);
+      ctx.fillStyle = 'rgba(255,255,255,0.85)';
+      ctx.save(); ctx.rotate(0.5);
+      ctx.fillRect(sx, -22, 5, 46);
+      ctx.restore();
+      ctx.restore();
+      ctx.fillStyle = 'rgba(255,245,190,0.95)';
+      for (i = 0; i < 3; i++) {
+        var ph = t * 2.4 + i * 2.1;
+        var px = Math.cos(ph) * 18, py = Math.sin(ph * 1.3) * 16 - 2;
+        var sz = 2.6 + Math.abs(Math.sin(ph * 2)) * 2.4;
+        ctx.save(); ctx.translate(px, py); ctx.rotate(ph);
+        ctx.fillRect(-sz / 2, -0.8, sz, 1.6);
+        ctx.fillRect(-0.8, -sz / 2, 1.6, sz);
+        ctx.restore();
+      }
+      return;
+    }
+    if (sk.extra === 'rainbow') {                   // радуга: светящийся контур и искры
+      ctx.strokeStyle = 'hsla(' + ((t * 140) % 360) + ',90%,75%,0.85)';
+      ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.ellipse(0, 1, 14.5, 16.5, 0, 0, 6.2832); ctx.stroke();
+      ctx.fillStyle = 'rgba(255,255,255,0.9)';
+      for (i = 0; i < 4; i++) {
+        a = t * 3 + i * 1.6;
+        ctx.beginPath();
+        ctx.arc(Math.cos(a) * 17, Math.sin(a) * 18 - 1, 1.8 + Math.abs(Math.sin(a * 2)) * 1.4, 0, 6.2832);
+        ctx.fill();
+      }
+      return;
+    }
+  }
+
+  // Превью скина для магазина: тот же спрайт в отдельном маленьком контексте
+  function drawSkinPreview(g, skinId, size) {
+    var keepSkin = G.skin, keepInv = G.invuln;
+    G.skin = skinId; G.invuln = 0;
+    withCtx(g, function () {
+      g.save();
+      g.translate(size / 2, size * 0.56);
+      g.scale(size / 78, size / 78);
+      drawChicken(0, 0, null, 'up', false, G.t + skinId.length * 0.7);
+      g.restore();
+    });
+    G.skin = keepSkin; G.invuln = keepInv;
+  }
+
 
   /* --- орёл ----------------------------------------------------------------- */
   function drawEagle(e, t) {
@@ -1255,7 +1627,11 @@
       return;
     }
     if (e.code === 'KeyM') { toggleMute(); return; }
-    if (e.code === 'KeyP' || e.code === 'Escape') { togglePause(); return; }
+    if (e.code === 'KeyP' || e.code === 'Escape') {
+      if (el.ovSkins && el.ovSkins.classList.contains('on')) { closeSkins(); return; }
+      togglePause();
+      return;
+    }
     if (e.code === 'Space' || e.code === 'Enter') {
       if (G.state === 'menu') { startGame(); }
       else if (G.state === 'over') { startGame(); }
@@ -1307,29 +1683,34 @@
   var $ = function (id) { return document.getElementById(id); };
   var el = {
     score: $('vScore'), best: $('vBest'), coins: $('vCoins'),
-    ovMenu: $('ovMenu'), ovOver: $('ovOver'), ovPause: $('ovPause'), ovLoading: $('ovLoading'),
+    ovMenu: $('ovMenu'), ovOver: $('ovOver'), ovPause: $('ovPause'), ovLoading: $('ovLoading'), ovSkins: $('ovSkins'),
     oScore: $('oScore'), oBest: $('oBest'), oRecord: $('oRecord'), oReason: $('tReason'),
     mBest: $('mBest'), mCoins: $('mCoins'),
     btnPlay: $('btnPlay'), btnRestart: $('btnRestart'), btnRevive: $('btnRevive'),
     btnResume: $('btnResume'), btnRestart2: $('btnRestart2'),
     btnMute: $('btnMute'), btnPause: $('btnPause'),
+    btnPauseSound: $('btnPauseSound'), icPauseSound: $('icPauseSound'),
+    btnPauseSkins: $('btnPauseSkins'), btnToMenu: $('btnToMenu'), btnMenuSkins: $('btnMenuSkins'),
+    btnSkinsClose: $('btnSkinsClose'), skinsGrid: $('skinsGrid'), skCoins: $('skCoins'),
+    skinsHint: $('tSkinsHint'), diffHint: $('tDiffHint'),
+    pScore: $('pScore'), pCoins: $('pCoins'), pDiff: $('pDiff'),
     hint: $('hintEagle')
   };
   var lastHUD = { score: -1, best: -1, coins: -1 };
 
   function syncHUD(force) {
-    if (force || G.score !== lastHUD.score) { if (el.score) { el.score.textContent = G.score; } lastHUD.score = G.score; }
-    if (force || G.best !== lastHUD.best) { if (el.best) { el.best.textContent = G.best; } lastHUD.best = G.best; }
+    if (force || G.score !== lastHUD.score) { if (el.score) { el.score.textContent = String(G.score); } lastHUD.score = G.score; }
+    var best = bestFor();
+    if (force || best !== lastHUD.best) { if (el.best) { el.best.textContent = String(best); } lastHUD.best = best; }
     var shown = G.state === 'playing' ? G.coins : G.totalCoins;
-    if (force || shown !== lastHUD.coins) { if (el.coins) { el.coins.textContent = shown; } lastHUD.coins = shown; }
+    if (force || shown !== lastHUD.coins) { if (el.coins) { el.coins.textContent = String(shown); } lastHUD.coins = shown; }
   }
 
   function showOnly(which) {
-    var list = [el.ovMenu, el.ovOver, el.ovPause, el.ovLoading];
+    var list = [el.ovMenu, el.ovOver, el.ovPause, el.ovLoading, el.ovSkins];
     for (var i = 0; i < list.length; i++) {
       if (!list[i]) { continue; }
-      var on = (list[i].id === which);
-      list[i].classList.toggle('on', on);
+      list[i].classList.toggle('on', list[i].id === which);
     }
   }
   function showHint(text) {
@@ -1344,6 +1725,7 @@
     G.muted = !G.muted;
     Sound.setMuted(G.muted);
     if (el.btnMute) { el.btnMute.textContent = G.muted ? '🔇' : '🔊'; }
+    if (el.icPauseSound) { el.icPauseSound.textContent = G.muted ? '🔇' : '🔊'; }
     try { window.localStorage.setItem('cc_muted', G.muted ? '1' : '0'); } catch (e) {}
   }
   function togglePause() {
@@ -1361,31 +1743,197 @@
     }
   }
 
+  /* --- сложность ------------------------------------------------------------ */
+  function diffKey(id, suffix) {
+    return 'diff' + id.charAt(0).toUpperCase() + id.slice(1) + (suffix || '');
+  }
+  function setDiff(id, silent) {
+    if (!DIFFS[id]) { id = 'normal'; }
+    var changed = G.diffId !== id;
+    G.diffId = id;
+    G.best = Math.max(G.best, bestFor());
+    lastHUD.best = -1;
+    var btns = document.querySelectorAll ? document.querySelectorAll('#segDiff .segbtn') : [];
+    for (var i = 0; i < btns.length; i++) {
+      var id2 = btns[i].getAttribute ? btns[i].getAttribute('data-diff') : null;
+      btns[i].classList.toggle('on', id2 === id);
+    }
+    if (el.diffHint) { el.diffHint.textContent = Pl.t(diffKey(id, 'Hint')); }
+    if (el.pDiff) { el.pDiff.textContent = Pl.t(diffKey(id)); }
+    UI.refreshRecord();
+    if (!silent) { saveProfile(); }
+    return changed;
+  }
+
+  /* --- скины: карточки магазина -------------------------------------------- */
+  var skinCards = [];
+  var skinsFrom = 'menu';       // куда возвращает «Назад»
+  var lastPreviewAt = -1;
+  var hintBackTimer = null;
+
+  function ownsSkin(id) { return G.skins.indexOf(id) >= 0; }
+
+  function makeSkinCard(sk) {
+    var node = document.createElement('button');
+    node.className = 'skincard';
+    node.type = 'button';
+    var cv = document.createElement('canvas');
+    var px = Math.round(64 * Math.min(window.devicePixelRatio || 1, 2));
+    cv.width = px; cv.height = px;
+    if (cv.style) { cv.style.width = '64px'; cv.style.height = '64px'; }
+    var name = document.createElement('span');
+    name.className = 'skc-name';
+    name.textContent = Pl.t('sk_' + sk.id);
+    var tag = document.createElement('span');
+    tag.className = 'skc-tag';
+    var badge = document.createElement('span');
+    badge.className = 'skc-badge';
+    node.appendChild(cv); node.appendChild(name); node.appendChild(tag); node.appendChild(badge);
+    node.addEventListener('click', function () { pickSkin(sk.id); });
+    if (el.skinsGrid) { el.skinsGrid.appendChild(node); }
+    skinCards.push({ id: sk.id, node: node, canvas: cv, tag: tag, badge: badge, name: name });
+  }
+  function buildSkinCards() {
+    if (skinCards.length || !el.skinsGrid) { return; }
+    for (var i = 0; i < SKINS.length; i++) { makeSkinCard(SKINS[i]); }
+  }
+  // превью перерисовываются на лету — «радуга» и «золотая» анимированы
+  function drawSkinPreviews() {
+    for (var i = 0; i < skinCards.length; i++) {
+      var c = skinCards[i];
+      if (!c.canvas || !c.canvas.getContext) { continue; }
+      var g = c.canvas.getContext('2d');
+      var dpr = (c.canvas.width || 64) / 64;
+      if (g.setTransform) { g.setTransform(dpr, 0, 0, dpr, 0, 0); }
+      if (g.clearRect) { g.clearRect(0, 0, 64, 64); }
+      drawSkinPreview(g, c.id, 64);
+    }
+    lastPreviewAt = G.t;
+  }
+  function refreshSkins() {
+    if (el.skCoins) { el.skCoins.textContent = String(G.totalCoins); }
+    for (var i = 0; i < skinCards.length; i++) {
+      var c = skinCards[i], sk = SKIN_BY_ID[c.id];
+      var owned = ownsSkin(c.id), worn = G.skin === c.id;
+      c.node.classList.toggle('sel', worn);
+      c.node.classList.toggle('locked', !owned);
+      c.tag.textContent = worn ? Pl.t('equipped') : (owned ? Pl.t('equip') : sk.price + ' 🪙');
+      c.tag.className = 'skc-tag' + (worn || owned ? ' have' : (G.totalCoins >= sk.price ? '' : ' poor'));
+      c.badge.textContent = worn ? '✅' : (owned ? '' : '🔒');
+    }
+    drawSkinPreviews();
+  }
+  function skinMessage(text) {
+    if (!el.skinsHint) { return; }
+    el.skinsHint.textContent = text;
+    if (hintBackTimer) { clearTimeout(hintBackTimer); }
+    hintBackTimer = setTimeout(function () {
+      try { if (el.skinsHint) { el.skinsHint.textContent = Pl.t('skinsHint'); } } catch (e) {}
+    }, 1500);
+  }
+  function buySkin(id) {
+    var sk = SKIN_BY_ID[id];
+    if (!sk || ownsSkin(id) || G.totalCoins < sk.price) { return false; }
+    G.totalCoins -= sk.price;
+    G.skins.push(id);
+    saveProfile();
+    syncHUD(true);
+    refreshSkins();
+    return true;
+  }
+  function equipSkin(id) {
+    if (!SKIN_BY_ID[id] || !ownsSkin(id)) { return false; }
+    G.skin = id;
+    saveProfile();
+    refreshSkins();
+    return true;
+  }
+  function pickSkin(id) {
+    if (!SKIN_BY_ID[id]) { return false; }
+    if (!ownsSkin(id)) {
+      if (!buySkin(id)) { skinMessage(Pl.t('notEnough')); return false; }
+      Sound.coin();
+      skinMessage(Pl.t('bought'));
+    } else {
+      Sound.hop();
+    }
+    equipSkin(id);
+    return true;
+  }
+  function openSkins(from) {
+    skinsFrom = from || 'menu';
+    buildSkinCards();
+    refreshSkins();
+    showOnly('ovSkins');
+  }
+  function closeSkins() {
+    if (skinsFrom === 'pause' && G.state === 'paused') {
+      UI.pause();
+      showOnly('ovPause');
+    } else {
+      UI.menu();
+      showOnly('ovMenu');
+    }
+  }
+
+  // выход в меню из паузы: забег не засчитываем, но прогресс сохраняем
+  function toMenu() {
+    saveProfile();
+    Sound.resume();
+    G.state = 'menu';
+    G.eagle = null;
+    reset();
+    Pl.gameplayStop();
+    syncHUD(true);
+    UI.menu();
+    showOnly('ovMenu');
+  }
+
   var UI = {
     applyLang: function () {
       var set = function (id, txt) { var n = $(id); if (n) { n.textContent = txt; } };
-      set('lblBest', Pl.t('best')); set('lblCoins', Pl.t('coins'));
-      set('mLblBest', Pl.t('best')); set('mLblCoins', Pl.t('coins'));
-      set('oLblBest', Pl.t('best'));
-      set('tOver', Pl.t('gameOver')); set('tPaused', Pl.t('paused'));
-      set('btnPlay', Pl.t('play')); set('btnRestart', Pl.t('playAgain'));
-      set('btnRestart2', Pl.t('restart')); set('btnResume', Pl.t('resume'));
-      set('btnRevive', Pl.t('revive'));
-      set('tControls', Pl.t('controlsDesktop'));
-      set('tControls2', Pl.t('controlsMobile'));
-      set('tSub', Pl.t('tap'));
-      set('oRecord', Pl.t('record'));
-      set('ovLoadText', Pl.t('loading'));
+      var setT = function (id, key) { set(id, Pl.t(key)); };
+      setT('lblBest', 'best'); setT('lblCoins', 'coins');
+      setT('mLblBest', 'best'); setT('mLblCoins', 'coins');
+      setT('oLblBest', 'best');
+      setT('tOver', 'gameOver'); setT('tPaused', 'paused');
+      setT('btnPlay', 'play'); setT('btnRestart', 'playAgain');
+      setT('tRestart', 'restart'); setT('tResume', 'resume'); setT('tSound', 'sound');
+      setT('btnRevive', 'revive');
+      setT('tControls', 'controlsDesktop');
+      setT('tControls2', 'controlsMobile');
+      setT('tSub', 'tap');
+      setT('oRecord', 'record');
+      setT('ovLoadText', 'loading');
+      // пауза
+      setT('tPauseHint', 'pauseHint'); setT('tToMenu', 'toMenu'); setT('tPauseSkins', 'skins');
+      setT('pLblScore', 'score'); setT('pLblCoins', 'coins');
+      // сложность
+      setT('tDiffEasy', 'diffEasy'); setT('tDiffEasySub', 'diffEasySub');
+      setT('tDiffNormal', 'diffNormal'); setT('tDiffNormalSub', 'diffNormalSub');
+      setT('tDiffHard', 'diffHard'); setT('tDiffHardSub', 'diffHardSub');
+      if (el.diffHint) { el.diffHint.textContent = Pl.t(diffKey(G.diffId, 'Hint')); }
+      if (el.pDiff) { el.pDiff.textContent = Pl.t(diffKey(G.diffId)); }
+      // скины
+      setT('tMenuSkins', 'skins'); setT('tSkins', 'skins'); setT('tWallet', 'wallet');
+      setT('tSkinsHint', 'skinsHint'); setT('btnSkinsClose', 'back');
+      for (var i = 0; i < skinCards.length; i++) {
+        skinCards[i].name.textContent = Pl.t('sk_' + skinCards[i].id);
+      }
       document.title = 'Crossy Chicken';
     },
     menu: function () {
-      if (el.mBest) { el.mBest.textContent = G.best; }
-      if (el.mCoins) { el.mCoins.textContent = G.totalCoins; }
+      if (el.mBest) { el.mBest.textContent = String(bestFor()); }
+      if (el.mCoins) { el.mCoins.textContent = String(G.totalCoins); }
       showOnly('ovMenu');
     },
+    refreshRecord: function () {
+      if (el.mBest) { el.mBest.textContent = String(bestFor()); }
+      if (el.mCoins) { el.mCoins.textContent = String(G.totalCoins); }
+    },
     over: function (isRecord) {
-      if (el.oScore) { el.oScore.textContent = G.score; }
-      if (el.oBest) { el.oBest.textContent = G.best; }
+      if (el.oScore) { el.oScore.textContent = String(G.score); }
+      if (el.oBest) { el.oBest.textContent = String(bestFor()); }
       if (el.oRecord) { el.oRecord.classList.toggle('on', !!isRecord); }
       if (el.oReason) { el.oReason.textContent = Pl.t('r_' + G.deathReason); }
       var canRevive = Pl.rewardedAvailable && !G.reviveUsed;
@@ -1395,15 +1943,26 @@
         el.btnRevive.textContent = Pl.t('revive');
       }
     },
-    pause: function () {}
+    // панель паузы показывает, с чем игрок остановился
+    pause: function () {
+      if (el.pScore) { el.pScore.textContent = String(G.score); }
+      if (el.pCoins) { el.pCoins.textContent = String(G.coins); }
+      if (el.pDiff) { el.pDiff.textContent = Pl.t(diffKey(G.diffId)); }
+    },
+    skins: openSkins
   };
 
   if (el.btnPlay) { el.btnPlay.addEventListener('click', function () { Sound.init(); startGame(); }); }
   if (el.btnRestart) { el.btnRestart.addEventListener('click', function () { startGame(); }); }
-  if (el.btnRestart2) { el.btnRestart2.addEventListener('click', function () { startGame(); }); }
+  if (el.btnRestart2) { el.btnRestart2.addEventListener('click', function () { Sound.resume(); startGame(); }); }
   if (el.btnResume) { el.btnResume.addEventListener('click', function () { if (G.state === 'paused') { togglePause(); } }); }
   if (el.btnPause) { el.btnPause.addEventListener('click', function () { togglePause(); }); }
   if (el.btnMute) { el.btnMute.addEventListener('click', function () { toggleMute(); }); }
+  if (el.btnPauseSound) { el.btnPauseSound.addEventListener('click', function () { toggleMute(); }); }
+  if (el.btnPauseSkins) { el.btnPauseSkins.addEventListener('click', function () { openSkins('pause'); }); }
+  if (el.btnMenuSkins) { el.btnMenuSkins.addEventListener('click', function () { openSkins('menu'); }); }
+  if (el.btnSkinsClose) { el.btnSkinsClose.addEventListener('click', function () { closeSkins(); }); }
+  if (el.btnToMenu) { el.btnToMenu.addEventListener('click', function () { toMenu(); }); }
   if (el.btnRevive) {
     el.btnRevive.addEventListener('click', function () {
       var b = el.btnRevive;
@@ -1415,6 +1974,19 @@
       });
     });
   }
+
+  // три кнопки сложности в главном меню
+  (function () {
+    var btns = document.querySelectorAll ? document.querySelectorAll('#segDiff .segbtn') : [];
+    for (var i = 0; i < btns.length; i++) {
+      (function (btn) {
+        btn.addEventListener('click', function () {
+          var id = btn.getAttribute ? btn.getAttribute('data-diff') : null;
+          if (id) { Sound.hop(); setDiff(id); }
+        });
+      })(btns[i]);
+    }
+  })();
 
   // пауза при потере фокуса вкладки (требование площадки + здравый смысл)
   document.addEventListener('visibilitychange', function () {
@@ -1433,6 +2005,10 @@
     G.t += dt;
     if (G.state === 'playing') { update(dt); }
     else if (G.state === 'menu') { moveWorld(dt); updateParticles(dt); }
+    // в магазине скинов превью живут своей жизнью: «радуга» и «золотая» анимированы
+    if (skinCards.length && el.ovSkins && el.ovSkins.classList.contains('on') && G.t - lastPreviewAt > 0.08) {
+      drawSkinPreviews();
+    }
     render();
   }
 
@@ -1457,23 +2033,48 @@
 
     resize();
     ensureRows(ROWS_AHEAD);
+    buildSkinCards();
 
     Pl.init().then(function () {
       UI.applyLang();
       return Pl.load();
     }).then(function (data) {
-      G.best = data.best || 0;
-      G.totalCoins = data.coins || 0;
-      syncHUD(true);
+      applyProfile(data || {});
       G.state = 'menu';
       UI.menu();
       showOnly('ovMenu');
     }).catch(function () {
+      applyProfile({});
       G.state = 'menu';
+      UI.menu();
       showOnly('ovMenu');
     });
 
     requestAnimationFrame(frame);
+  }
+
+  // профиль из сохранений: рекорды по режимам, монеты, сложность, скины
+  function applyProfile(data) {
+    G.best = Math.max(0, data.best || 0);
+    G.bests = {
+      easy: Math.max(0, (data.bests && data.bests.easy) || 0),
+      normal: Math.max(0, (data.bests && data.bests.normal) || 0),
+      hard: Math.max(0, (data.bests && data.bests.hard) || 0)
+    };
+    G.best = Math.max(G.best, G.bests.easy, G.bests.normal, G.bests.hard);
+    G.totalCoins = Math.max(0, data.coins || 0);
+    G.skins = ['classic'];
+    if (data.skins && data.skins.length) {
+      for (var i = 0; i < data.skins.length; i++) {
+        var id = String(data.skins[i]);
+        if (SKIN_BY_ID[id] && G.skins.indexOf(id) < 0) { G.skins.push(id); }
+      }
+    }
+    G.skin = (data.skin && SKIN_BY_ID[data.skin] && G.skins.indexOf(data.skin) >= 0) ? data.skin : 'classic';
+    setDiff(DIFFS[data.diff] ? data.diff : 'normal', true);
+    lastHUD.best = -1;
+    syncHUD(true);
+    refreshSkins();
   }
 
   // отладочный доступ (используется автотестом, в проде не мешает)
@@ -1483,7 +2084,47 @@
     teleport: function (c, r) { pl.px = colX(c); pl.py = rowY(r); pl.hop = null; pl.log = null; camY = camTargetY = camTargetFor(pl.py); },
     rows: function () { return G.rows; },
     ensure: ensureRows,
-    resize: resize
+    resize: resize,
+
+    /* сложность */
+    diffs: function () { return DIFF_ORDER.slice(); },
+    diff: function () { return G.diffId; },
+    setDiff: setDiff,
+    ramp: ramp,
+    eagleLimit: eagleLimit,
+
+    /* скины */
+    skinList: function () {
+      var out = [];
+      for (var i = 0; i < SKINS.length; i++) {
+        out.push({
+          id: SKINS[i].id, price: SKINS[i].price,
+          name: Pl.t('sk_' + SKINS[i].id),
+          owned: ownsSkin(SKINS[i].id), worn: G.skin === SKINS[i].id
+        });
+      }
+      return out;
+    },
+    skin: function () { return G.skin; },
+    coins: function () { return G.totalCoins; },
+    setCoins: function (n) {
+      G.totalCoins = Math.max(0, Math.round(n) || 0);
+      saveProfile(); syncHUD(true); refreshSkins();
+      return G.totalCoins;
+    },
+    buySkin: buySkin,
+    equipSkin: equipSkin,
+    pickSkin: pickSkin,
+    skinCards: function () { return skinCards.length; },
+
+    /* экраны */
+    state: function () { return G.state; },
+    pause: togglePause,
+    toMenu: toMenu,
+    openSkins: openSkins,
+    closeSkins: closeSkins,
+    profile: profile,
+    save: saveProfile
   };
 
   boot();

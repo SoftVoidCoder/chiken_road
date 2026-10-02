@@ -8,6 +8,7 @@
      • Межстраничная реклама  — не чаще 1 раза в минуту (требование платформы)
      • Rewarded video         — «продолжить после смерти»
      • Сохранения: player.setData/getData + локальное зеркало в localStorage
+       (общий рекорд, рекорды по трём сложностям, монеты, купленные скины)
      • Таблица лидеров (включается одной константой)
      • Локализация: ru / en (добавляется одним объектом в STRINGS)
    ========================================================================== */
@@ -33,7 +34,24 @@
       controlsMobile: 'Тап — вперёд, свайп — в сторону',
       r_car: 'Курицу сбила машина', r_train: 'Курицу переехал поезд', r_water: 'Курица утонула',
       r_edge: 'Курицу унесло течением', r_eagle: 'Курицу унёс орёл',
-      hintEagle: 'Не стой на месте — прилетит орёл!'
+      hintEagle: 'Не стой на месте — прилетит орёл!',
+
+      /* сложность */
+      diffEasy: 'Легко', diffEasySub: 'без спешки',
+      diffNormal: 'Обычно', diffNormalSub: 'как в оригинале',
+      diffHard: 'Сложно', diffHardSub: 'трафик и орёл',
+      diffEasyHint: 'Машины едут медленнее, зазоры шире, орёл ждёт дольше.',
+      diffNormalHint: 'Классический баланс: средний трафик и орёл через 7 секунд.',
+      diffHardHint: 'Плотный поток, быстрые реки и орёл уже через 5 секунд — зато монет больше.',
+      pauseHint: 'P / Esc — продолжить, M — звук', toMenu: 'В меню',
+
+      /* скины */
+      skins: 'Скины', wallet: 'Монеты', back: 'Назад',
+      skinsHint: 'Купи скин за монеты и надень его — курица сразу изменится.',
+      buy: 'Купить', equip: 'Надеть', equipped: 'Надето', owned: 'Куплено',
+      poor: 'Мало монет', bought: 'Куплено!', notEnough: 'Не хватает монет',
+      sk_classic: 'Классика', sk_chick: 'Цыплёнок', sk_bandit: 'Разбойник', sk_ninja: 'Ниндзя',
+      sk_zombie: 'Зомби', sk_robot: 'Робот', sk_gold: 'Золотая', sk_rainbow: 'Радуга'
     },
     en: {
       play: 'Play', loading: 'Loading…', tap: 'Tap to hop, swipe to steer',
@@ -46,9 +64,27 @@
       r_car: 'The chicken got hit by a car', r_train: 'The chicken got hit by a train',
       r_water: 'The chicken drowned', r_edge: 'The chicken drifted away',
       r_eagle: 'The chicken was taken by an eagle',
-      hintEagle: 'Keep moving or the eagle will get you!'
+      hintEagle: 'Keep moving or the eagle will get you!',
+
+      /* difficulty */
+      diffEasy: 'Easy', diffEasySub: 'no rush',
+      diffNormal: 'Normal', diffNormalSub: 'the original',
+      diffHard: 'Hard', diffHardSub: 'traffic & eagle',
+      diffEasyHint: 'Slower cars, wider gaps, the eagle waits longer.',
+      diffNormalHint: 'Classic balance: average traffic, the eagle strikes after 7 seconds.',
+      diffHardHint: 'Dense traffic, fast rivers, the eagle dives at 5 seconds — but coins are plentiful.',
+      pauseHint: 'P / Esc to resume, M for sound', toMenu: 'Menu',
+
+      /* skins */
+      skins: 'Skins', wallet: 'Coins', back: 'Back',
+      skinsHint: 'Buy a skin with coins and put it on — the chicken changes right away.',
+      buy: 'Buy', equip: 'Wear', equipped: 'Worn', owned: 'Owned',
+      poor: 'Too few coins', bought: 'Bought!', notEnough: 'Not enough coins',
+      sk_classic: 'Classic', sk_chick: 'Chick', sk_bandit: 'Bandit', sk_ninja: 'Ninja',
+      sk_zombie: 'Zombie', sk_robot: 'Robot', sk_gold: 'Golden', sk_rainbow: 'Rainbow'
     }
   };
+
 
   function navLang() {
     var l = (global.navigator && (global.navigator.language || global.navigator.userLanguage)) || 'ru';
@@ -65,6 +101,12 @@
     return null;
   }
   function parseNum(v, def) { var n = parseInt(v, 10); return isFinite(n) ? n : def; }
+  function parseList(v) {
+    if (!v) { return []; }
+    var out = [];
+    String(v).split(',').forEach(function (s) { s = s.trim(); if (s && out.indexOf(s) < 0) { out.push(s); } });
+    return out;
+  }
 
   var P = {
     ok: false,            // SDK реально доступен
@@ -198,23 +240,79 @@
     },
 
     /* --- сохранения ------------------------------------------------------- */
+    // Профиль игрока: общий рекорд, рекорды по сложностям, монеты, скины.
     load: function () {
       var local = {
         best: parseNum(ls('cc_best'), 0),
-        coins: parseNum(ls('cc_coins'), 0)
+        coins: parseNum(ls('cc_coins'), 0),
+        bests: {
+          easy: parseNum(ls('cc_best_easy'), 0),
+          normal: parseNum(ls('cc_best_normal'), 0),
+          hard: parseNum(ls('cc_best_hard'), 0)
+        },
+        skins: parseList(ls('cc_skins')),
+        skin: ls('cc_skin') || '',
+        diff: ls('cc_diff') || ''
       };
       if (!P.player) { return Promise.resolve(local); }
-      return P.player.getData(['best', 'coins']).then(function (d) {
-        var best = Math.max(local.best, parseNum(d && d.best, 0));
-        var coins = Math.max(local.coins, parseNum(d && d.coins, 0));
-        return { best: best, coins: coins };
+      return P.player.getData(['best', 'coins', 'bests', 'skins', 'skin', 'diff']).then(function (d) {
+        d = d || {};
+        var rBests = (d.bests && typeof d.bests === 'object') ? d.bests : {};
+        var bests = {
+          easy: Math.max(local.bests.easy, parseNum(rBests.easy, 0)),
+          normal: Math.max(local.bests.normal, parseNum(rBests.normal, 0)),
+          hard: Math.max(local.bests.hard, parseNum(rBests.hard, 0))
+        };
+        var skins = local.skins.slice();
+        if (Array.isArray(d.skins)) {
+          for (var i = 0; i < d.skins.length; i++) {
+            var id = String(d.skins[i]);
+            if (id && skins.indexOf(id) < 0) { skins.push(id); }
+          }
+        }
+        return {
+          best: Math.max(local.best, parseNum(d.best, 0), bests.easy, bests.normal, bests.hard),
+          coins: Math.max(local.coins, parseNum(d.coins, 0)),
+          bests: bests,
+          skins: skins,
+          skin: local.skin || (typeof d.skin === 'string' ? d.skin : ''),
+          diff: local.diff || (typeof d.diff === 'string' ? d.diff : '')
+        };
       }, function () { return local; });
     },
     save: function (data) {
-      if (data.best !== undefined) { ls('cc_best', String(data.best)); }
-      if (data.coins !== undefined) { ls('cc_coins', String(data.coins)); }
+      var payload = {};
+      if (data.best !== undefined) {
+        ls('cc_best', String(data.best));
+        payload.best = data.best;
+      }
+      if (data.coins !== undefined) {
+        var c = Math.max(0, Math.round(data.coins));
+        ls('cc_coins', String(c));
+        payload.coins = c;
+      }
+      if (data.bests && typeof data.bests === 'object') {
+        payload.bests = {};
+        for (var k in data.bests) {
+          if (!data.bests.hasOwnProperty(k)) { continue; }
+          payload.bests[k] = Math.max(0, Math.round(data.bests[k] || 0));
+          ls('cc_best_' + k, String(payload.bests[k]));
+        }
+      }
+      if (data.skins) {
+        payload.skins = data.skins.slice();
+        ls('cc_skins', payload.skins.join(','));
+      }
+      if (data.skin) {
+        payload.skin = data.skin;
+        ls('cc_skin', data.skin);
+      }
+      if (data.diff) {
+        payload.diff = data.diff;
+        ls('cc_diff', data.diff);
+      }
       if (P.player) {
-        try { P.player.setData({ best: data.best, coins: data.coins }, true); } catch (e) {}
+        try { P.player.setData(payload, true); } catch (e) {}
       }
     },
 

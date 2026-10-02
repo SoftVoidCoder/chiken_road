@@ -70,6 +70,53 @@
   .logo{width:76px;height:76px;margin:0 auto 6px;border-radius:24px;background:linear-gradient(180deg,#7ed957,#4aa832);
     display:grid;place-items:center;box-shadow:0 8px 0 #3f8f2a,0 14px 26px rgba(0,0,0,.25)}
   .logo svg{width:48px;height:48px}
+  /* ---------- переключатель сложности ---------- */
+  .seg{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-top:16px;padding:5px;border-radius:18px;background:#e6e2d6}
+  .segbtn{display:flex;flex-direction:column;align-items:center;gap:2px;padding:9px 3px;border:0;border-radius:14px;cursor:pointer;
+    background:transparent;font:inherit;font-size:13px;font-weight:800;color:#6b7789;
+    transition:background .18s,color .18s,transform .12s,box-shadow .18s}
+  .segbtn:active{transform:scale(.96)}
+  .segbtn.on{background:#fff;color:#1d2b3f;box-shadow:0 3px 0 rgba(0,0,0,.1)}
+  .segbtn .ic{font-size:17px;line-height:1.1}
+  .segbtn .st{font-size:9px;letter-spacing:.06em;text-transform:uppercase;opacity:.62;font-weight:700}
+  .seghint{margin-top:9px;font-size:12.5px;color:#7b8798;line-height:1.45;min-height:36px}
+
+  /* ---------- пауза ---------- */
+  .runline{display:flex;justify-content:center;flex-wrap:wrap;gap:8px;margin:14px 0 12px}
+  .chip{display:inline-flex;align-items:center;gap:6px;padding:6px 12px;border-radius:12px;background:#e9e5da;
+    color:#68758a;font-size:12.5px;font-weight:700}
+  .chip b{color:#1d2b3f;font-size:14.5px;font-variant-numeric:tabular-nums}
+  .chip.diff{background:#dff0d6;color:#3f6b34}
+  .btn.resume{display:flex;align-items:center;justify-content:center;gap:9px;padding:17px;font-size:18px;margin-top:0}
+  .btn.resume .ic{font-size:14px}
+  .tiles{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-top:10px}
+  .tile{display:flex;flex-direction:column;align-items:center;gap:5px;padding:13px 6px;border:0;border-radius:16px;cursor:pointer;
+    background:#e6e2d6;color:#3c4a63;font:inherit;font-size:12.5px;font-weight:800;
+    box-shadow:0 3px 0 #c9c3b3;transition:transform .12s,box-shadow .12s,background .2s}
+  .tile:hover{background:#e0dbcd}
+  .tile:active{transform:translateY(2px);box-shadow:0 1px 0 #c9c3b3}
+  .tile .ic{font-size:21px;line-height:1}
+
+  /* ---------- скины ---------- */
+  .skins-panel{width:min(452px,94vw);max-height:94vh;display:flex;flex-direction:column;padding:22px 20px 18px}
+  .wallet{display:inline-flex;align-items:center;gap:7px;margin:12px auto 0;padding:7px 16px;border-radius:13px;
+    background:#fff4cf;color:#8a6a00;font-size:13.5px;font-weight:800}
+  .wallet b{font-size:16px;font-variant-numeric:tabular-nums}
+  .skingrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(102px,1fr));gap:9px;margin:14px 0 2px;
+    overflow-y:auto;padding:2px;flex:1;min-height:0}
+  .skincard{position:relative;display:flex;flex-direction:column;align-items:center;gap:1px;padding:7px 5px 9px;
+    border:2px solid transparent;border-radius:16px;background:#ece8dd;cursor:pointer;font:inherit;
+    transition:transform .12s,border-color .2s,background .2s}
+  .skincard:hover{background:#e4dfd2}
+  .skincard:active{transform:scale(.97)}
+  .skincard.sel{border-color:#57bb3a;background:#e7f6df}
+  .skincard.locked canvas{filter:grayscale(.6) opacity(.72)}
+  .skincard canvas{display:block;width:64px;height:64px}
+  .skc-name{font-size:12.5px;font-weight:800;color:#2c3a51;line-height:1.2}
+  .skc-tag{font-size:10.5px;font-weight:800;color:#6b7789;letter-spacing:.02em}
+  .skc-tag.have{color:#3f8f2a}
+  .skc-tag.poor{color:#a8552f}
+  .skc-badge{position:absolute;top:5px;right:7px;font-size:12px;line-height:1}
   .dots{display:flex;gap:6px;justify-content:center;margin-top:16px}
   .dots i{width:7px;height:7px;border-radius:50%;background:#c9c3b3;animation:blink 1.2s infinite}
   .dots i:nth-child(2){animation-delay:.2s}.dots i:nth-child(3){animation-delay:.4s}
@@ -78,6 +125,11 @@
     .panel{padding:18px;border-radius:20px}
     .panel h1{font-size:23px}.panel .big{font-size:40px}.btn{padding:12px;margin-top:8px;font-size:15px}
     .logo{width:58px;height:58px;margin-bottom:2px}.logo svg{width:36px;height:36px}
+    .btn.resume{padding:13px;margin-top:0}
+    .tile{padding:9px 5px;font-size:11.5px}.tile .ic{font-size:17px}
+    .seg{margin-top:10px}.seghint{min-height:0;margin-top:7px;font-size:11.5px}
+    .runline{margin:9px 0 9px}.skincard canvas{width:52px;height:52px}
+    .skingrid{grid-template-columns:repeat(auto-fill,minmax(88px,1fr))}
   }
 </style>
 </head>
@@ -123,10 +175,36 @@
     </div>
     <h1>Crossy&nbsp;Chicken</h1>
     <p class="sub" id="tSub">Тап — шаг вперёд, свайп — в сторону</p>
+
+    <div class="seg" id="segDiff">
+      <button class="segbtn" data-diff="easy" type="button">
+        <span class="ic">🌿</span><span id="tDiffEasy">Легко</span><span class="st" id="tDiffEasySub">без спешки</span>
+      </button>
+      <button class="segbtn on" data-diff="normal" type="button">
+        <span class="ic">🐔</span><span id="tDiffNormal">Обычно</span><span class="st" id="tDiffNormalSub">как в оригинале</span>
+      </button>
+      <button class="segbtn" data-diff="hard" type="button">
+        <span class="ic">🔥</span><span id="tDiffHard">Сложно</span><span class="st" id="tDiffHardSub">трафик и орёл</span>
+      </button>
+    </div>
+    <div class="seghint" id="tDiffHint">Машины едут медленнее, зазоры шире, орёл ждёт дольше.</div>
+
     <button class="btn primary" id="btnPlay">Играть</button>
+    <button class="btn ghost" id="btnMenuSkins">🐔 <span id="tMenuSkins">Скины</span></button>
     <div class="keys" id="tControls">WASD / стрелки — шаг, P — пауза, M — звук</div>
     <div class="keys" id="tControls2" style="margin-top:2px">Тап — вперёд, свайп — в сторону</div>
     <div class="stats"><span id="mLblBest">Рекорд</span>: <b id="mBest">0</b> · <span id="mLblCoins">Монеты</span>: <b id="mCoins">0</b></div>
+  </div>
+</div>
+
+<!-- скины -->
+<div class="overlay" id="ovSkins">
+  <div class="panel skins-panel">
+    <h2 id="tSkins">Скины</h2>
+    <div class="wallet"><span>🪙</span><span id="tWallet">Монеты</span><b id="skCoins">0</b></div>
+    <div class="skingrid" id="skinsGrid"></div>
+    <div class="keys" id="tSkinsHint">Купи скин за монеты и надень его — курица сразу изменится.</div>
+    <button class="btn primary" id="btnSkinsClose">Назад</button>
   </div>
 </div>
 
@@ -146,8 +224,19 @@
 <div class="overlay" id="ovPause">
   <div class="panel">
     <h2 id="tPaused">Пауза</h2>
-    <button class="btn primary" id="btnResume">Продолжить</button>
-    <button class="btn ghost" id="btnRestart2">Заново</button>
+    <div class="runline">
+      <span class="chip"><span id="pLblScore">Очки</span> <b id="pScore">0</b></span>
+      <span class="chip"><span id="pLblCoins">Монеты</span> <b id="pCoins">0</b></span>
+      <span class="chip diff" id="pDiff">Обычно</span>
+    </div>
+    <button class="btn primary resume" id="btnResume"><span class="ic">▶</span><span id="tResume">Продолжить</span></button>
+    <div class="tiles">
+      <button class="tile" id="btnRestart2"><span class="ic">⟲</span><span id="tRestart">Заново</span></button>
+      <button class="tile" id="btnPauseSound"><span class="ic" id="icPauseSound">🔊</span><span id="tSound">Звук</span></button>
+      <button class="tile" id="btnPauseSkins"><span class="ic">🐔</span><span id="tPauseSkins">Скины</span></button>
+      <button class="tile" id="btnToMenu"><span class="ic">🏠</span><span id="tToMenu">В меню</span></button>
+    </div>
+    <div class="keys" id="tPauseHint">P / Esc — продолжить, M — звук</div>
   </div>
 </div>
 
