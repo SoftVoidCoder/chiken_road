@@ -45,9 +45,28 @@
     var dir = wrnd() < 0.5 ? 1 : -1;
     var speedT = opts.speedT;                      // клеток в секунду
     var kind = opts.kind ? opts.kind(d) : null;
-    // длина: либо своя функция (брёвна), либо из таблицы KIND по типу машины
+    // Полоса может быть смешанной: opts.mix — список из 2-4 типов, и каждая
+    // машина берёт свой тип. Скорость у всей полосы одна, поэтому машины не
+    // догоняют друг друга, а вот длина и вид различаются.
+    var mix = opts.mix ? opts.mix(d) : null;
+    if (mix && mix.length) {
+      kind = mix[0];
+      for (var mi = 1; mi < mix.length; mi++) {
+        if ((KIND[mix[mi]] ? KIND[mix[mi]].len : 1) > (KIND[kind] ? KIND[kind].len : 1)) { kind = mix[mi]; }
+      }
+    }
+    // длина: либо своя функция (брёвна), либо самая длинная машина полосы
     var len = opts.len ? opts.len(d, kind) : (kind && KIND[kind] ? KIND[kind].len : 1);
-    var spMul = (kind && KIND[kind]) ? KIND[kind].sp : 1;
+    var spMul = 1;
+    if (!mix || !mix.length) {
+      // скорость полосы привязана к её типу только у однотипных полос
+      spMul = (kind && KIND[kind]) ? KIND[kind].sp : 1;
+    } else {
+      // у смешанной полосы берём средний множитель скорости по составу
+      var sum = 0;
+      for (var si = 0; si < mix.length; si++) { sum += (KIND[mix[si]] ? KIND[mix[si]].sp : 1); }
+      spMul = sum / mix.length;
+    }
     var vT = speedT * spMul;
     var gap = Math.max(opts.minGap, vT * opts.gapTime - d * opts.gapTighten);
     var span = COLS + 9;
@@ -63,7 +82,14 @@
     var items = [];
     for (var i = 0; i < count; i++) {
       var x = -L / 2 + i * spacing * TS + wrnd() * slack * TS;
-      items.push({ x: x, vx: vT * TS * dir, len: len, kind: kind, color: kind ? pick(CAR_COLORS[kind]) : null, ph: wrnd(0, 6.28) });
+      // своя модель для каждой машины: в полосе одновременно 2-4 разных типа
+      var ik = (mix && mix.length) ? mix[i % mix.length] : kind;
+      if (!KIND[ik]) { ik = 'car'; }
+      var ilen = (mix && mix.length && KIND[ik]) ? KIND[ik].len : len;
+      items.push({
+        x: x, vx: vT * TS * dir, len: ilen, kind: ik,
+        color: pick(CAR_COLORS[ik] || ['#e05a47']), ph: wrnd(0, 6.28)
+      });
     }
     return { dir: dir, items: items, loop: L, speed: vT };
   }
@@ -97,25 +123,27 @@
     return row;
   }
 
+  // Обычный набор машин: используется, когда у биома нет своего пула
+  var CAR_POOL = ['car', 'car', 'taxi', 'van', 'bus', 'truck', 'police',
+    'sport', 'pickup', 'ambulance', 'tractor', 'moto'];
+
   function genRoad(r, d) {
     var row = { type: 'road', r: r };
     var lane = makeLane(r, d, {
       speedT: (1.7 + wrnd() * 2.1 + d * 2.4) * diff().speed,
-      kind: function () {
-        var pool = themeCars();
-        if (pool) { return pick(pool); }
-        var q = wrnd();
-        if (q < 0.30) { return 'car'; }
-        if (q < 0.41) { return 'taxi'; }
-        if (q < 0.51) { return 'van'; }
-        if (q < 0.60) { return 'bus'; }
-        if (q < 0.68) { return 'truck'; }
-        if (q < 0.74) { return 'police'; }
-        if (q < 0.82) { return 'sport'; }       // быстрый и юркий
-        if (q < 0.88) { return 'pickup'; }
-        if (q < 0.93) { return 'ambulance'; }
-        if (q < 0.97) { return 'tractor'; }     // медленный, но длинный
-        return 'moto';                          // самый быстрый в игре
+      // Состав полосы: 2-4 разных типа. Раньше вся полоса была из одинаковых
+      // машин, из-за чего дорога выглядела однообразно.
+      mix: function () {
+        var pool = themeCars() || CAR_POOL;
+        var want = 3 + ((wrnd() * 2) | 0);          // 3..4 типа в полосе
+        if (want > pool.length) { want = pool.length; }
+        var chosen = [];
+        var guard = 0;
+        while (chosen.length < want && guard++ < 40) {
+          var cand = pick(pool);
+          if (chosen.indexOf(cand) < 0) { chosen.push(cand); }
+        }
+        return chosen;
       },
       minGap: diff().minGap,
       // в экстриме поток плотнее, а мягкая подстройка чуть ослабляет его новичку

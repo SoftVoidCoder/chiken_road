@@ -15,6 +15,29 @@
   var colX = U.colX, rowY = U.rowY, hash01 = U.hash01, clamp = U.clamp;
   var D = CC.draw, A = CC.actors, TH = CC.themes, MECH = CC.mech, META = CC.meta;
 
+  // Рамка вокруг поля: закрывает пустоту по бокам, чтобы глаз не цеплялось
+  // за появление и исчезновение машин за краем дороги.
+  function drawFieldFrame() {
+    var left = R.VW / 2 - FIELD_HALF * R.scale;
+    var right = R.VW / 2 + FIELD_HALF * R.scale;
+    if (left <= 0 && right >= R.VW) { return; }
+    var th = TH.get(G.themeId);
+    R.ctx.setTransform(R.DPR, 0, 0, R.DPR, 0, 0);
+    R.ctx.fillStyle = '#04060a';
+    if (left > 0) { R.ctx.fillRect(0, 0, left, R.VH); }
+    if (right < R.VW) { R.ctx.fillRect(right, 0, R.VW - right, R.VH); }
+    // оттенок биома поверх тёмной основы — рамка выглядит частью карты
+    R.ctx.globalAlpha = 0.4;
+    R.ctx.fillStyle = th.sky[1];
+    if (left > 0) { R.ctx.fillRect(0, 0, left, R.VH); }
+    if (right < R.VW) { R.ctx.fillRect(right, 0, R.VW - right, R.VH); }
+    R.ctx.globalAlpha = 1;
+    // светлая кромка поля
+    R.ctx.fillStyle = 'rgba(255,255,255,0.10)';
+    if (left > 0) { R.ctx.fillRect(left - 2, 0, 2, R.VH); }
+    if (right < R.VW) { R.ctx.fillRect(right, 0, 2, R.VH); }
+  }
+
   /* --- кэши кадра ----------------------------------------------------------
      Покрытие ряда (земля, дорога) не меняется, пока ряд жив: рисуем его один
      раз в полоску шириной поля и потом только копируем. Вода и рельсы
@@ -56,6 +79,13 @@
 
     var top = R.camY - (R.VH / 2) / R.scale, bot = R.camY + (R.VH / 2) / R.scale;
     var rFrom = Math.floor(-(bot + TS) / TS), rTo = Math.ceil(-(top - TS) / TS);
+
+    // Мир целиком обрезается по границам поля. Так игрок не видит, как машины
+    // и брёвна появляются из пустоты за краем дороги: они «въезжают» из-за рамки.
+    R.ctx.save();
+    R.ctx.beginPath();
+    R.ctx.rect(-FIELD_HALF, top - TS * 2, FIELD_HALF * 2, (bot - top) + TS * 4);
+    R.ctx.clip();
 
     for (var r = rTo; r >= rFrom; r--) {
       var row = G.rows[r];
@@ -123,6 +153,11 @@
 
     // явления механик биома: лазеры, краны, карусели, тени метеоров
     if (MECH) { MECH.drawWorld(); }
+
+    R.ctx.restore();      // конец обрезки по полю
+
+    // Плотная рамка по бокам: вся сцена — только поле, ничего лишнего по краям
+    drawFieldFrame();
 
     // затемнение за границами поля
     var edge = R.ctx.createLinearGradient(-FIELD_HALF - TS * 2, 0, -FIELD_HALF, 0);
