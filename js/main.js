@@ -56,16 +56,28 @@
     W.ensureRows(ROWS_AHEAD);
     UI.buildSkinCards();
 
+    // язык, выбранный вручную в настройках, важнее языка площадки
+    try {
+      var savedLang = window.localStorage.getItem('cc_lang');
+      if (savedLang && (savedLang === 'ru' || savedLang === 'en')) { Pl.lang = savedLang; }
+    } catch (e) {}
+
     Pl.init().then(function () {
       UI.applyLang();
       return Pl.load();
     }).then(function (data) {
       applyProfile(data || {});
+      if (CC.screens && CC.screens.init) { CC.screens.init(); }
       G.state = 'menu';
       UI.menu();
       UI.showOnly('ovMenu');
+      // при первом запуске показываем короткое обучение (п. 6.8)
+      if (!G.tutorialDone && CC.screens && CC.screens.openTutorial) {
+        CC.screens.openTutorial();
+      }
     }).catch(function () {
       applyProfile({});
+      if (CC.screens && CC.screens.init) { CC.screens.init(); }
       G.state = 'menu';
       UI.menu();
       UI.showOnly('ovMenu');
@@ -96,6 +108,31 @@
       }
     }
     G.skin = (data.skin && SK.byId[data.skin] && G.skins.indexOf(data.skin) >= 0) ? data.skin : 'classic';
+    // остальные слоты внешнего вида: покупаются за монеты, хранятся списком
+    var owned = data.owned && data.owned.length ? data.owned : [];
+    // Возвращает МАССИВ купленного для слота: раньше функция отдавала строку,
+    // из-за чего список покупок в магазине ломался.
+    function ownSlot(list, listName) {
+      var arr = [list[0].id];
+      for (var i = 0; i < owned.length; i++) {
+        for (var j = 0; j < list.length; j++) {
+          if (list[j].id === owned[i] && arr.indexOf(owned[i]) < 0) { arr.push(owned[i]); }
+        }
+      }
+      G[listName] = arr;
+      return arr;
+    }
+    ownSlot(SK.pets, 'ownedPets');
+    ownSlot(SK.trails, 'ownedTrails');
+    ownSlot(SK.hats, 'ownedHats');
+    ownSlot(SK.voices, 'ownedVoices');
+    G.pet = G.ownedPets.indexOf(data.pet) >= 0 ? data.pet : 'none';
+    G.trail = G.ownedTrails.indexOf(data.trail) >= 0 ? data.trail : 'none';
+    G.hat = G.ownedHats.indexOf(data.hat) >= 0 ? data.hat : 'none';
+    G.voice = G.ownedVoices.indexOf(data.voice) >= 0 ? data.voice : 'classic';
+    G.adsDisabled = !!data.adsDisabled;
+    G.tutorialDone = !!data.tutorialDone;
+    if (CC.platform) { CC.platform.adsDisabled = G.adsDisabled; }
     UI.setDiff(DIFFS[data.diff] ? data.diff : 'normal', true);
     UI.syncHUD(true);
     UI.refreshSkins();
@@ -201,7 +238,37 @@
     closeSkins: UI.closeSkins,
     profile: U.profile,
     save: U.saveProfile,
-    metrics: function () { return Pl.metrics(); }
+    metrics: function () { return Pl.metrics(); },
+
+    /* экраны и кастомизация */
+    screens: function () {
+      return {
+        открыто: CC.input.overlayOpen(),
+        режимов: CC.screens.MODES.length,
+        товаров: CC.screens.PRODUCTS.length,
+        предметовВМагазине: CC.screens.cardCount()
+      };
+    },
+    openScreen: function (name) { CC.screens.open(name); return name; },
+    closeScreens: function () { CC.screens.closeToMenu(); },
+    pickSlotItem: function (slot, id) {
+      var slots = CC.screens.SLOTS, def = null;
+      for (var i = 0; i < slots.length; i++) { if (slots[i].id === slot) { def = slots[i]; } }
+      if (!def) { return false; }
+      var list = def.list();
+      for (var j = 0; j < list.length; j++) {
+        if (list[j].id === id) { CC.screens.pickSlotItem(def, list[j]); return true; }
+      }
+      return false;
+    },
+    cosmetics: function () {
+      return { pet: G.pet, trail: G.trail, hat: G.hat, voice: G.voice,
+        pets: G.ownedPets.length, trails: G.ownedTrails.length,
+        hats: G.ownedHats.length, voices: G.ownedVoices.length };
+    },
+    setMode: function (id) { G.modeId = id; return G.modeId; },
+    boostStock: function () { return G.boostStock || {}; },
+    tutorialDone: function () { return G.tutorialDone; }
   };
 
   boot();

@@ -737,6 +737,10 @@
         skins: parseList(ls('cc_skins')),
         skin: ls('cc_skin') || '',
         diff: ls('cc_diff') || '',
+        pet: ls('cc_pet') || '', trail: ls('cc_trail') || '',
+        hat: ls('cc_hat') || '', voice: ls('cc_voice') || '',
+        owned: parseList(ls('cc_owned')),
+        adsOff: ls('cc_ads_off') === '1',
         meta: null,
         settings: null
       };
@@ -744,7 +748,8 @@
       try { local.settings = JSON.parse(ls('cc_settings') || 'null'); } catch (e) { local.settings = null; }
 
       if (!P.player) { return Promise.resolve(local); }
-      return P.player.getData(['best', 'coins', 'bests', 'skins', 'skin', 'diff', 'meta', 'settings']).then(function (d) {
+      return P.player.getData(['best', 'coins', 'bests', 'skins', 'skin', 'diff', 'meta', 'settings',
+        'pet', 'trail', 'hat', 'voice', 'owned', 'adsOff']).then(function (d) {
         d = d || {};
         var rBests = (d.bests && typeof d.bests === 'object') ? d.bests : {};
         var bests = {
@@ -766,6 +771,9 @@
           skins: skins,
           skin: local.skin || (typeof d.skin === 'string' ? d.skin : ''),
           diff: local.diff || (typeof d.diff === 'string' ? d.diff : ''),
+          pet: d.pet || '', trail: d.trail || '', hat: d.hat || '', voice: d.voice || '',
+          owned: Array.isArray(d.owned) ? d.owned : [],
+          adsOff: !!d.adsOff,
           // мета-прогресс: берём более «продвинутый» из двух сохранений
           meta: pickMeta(local.meta, d.meta),
           settings: local.settings || d.settings || null
@@ -802,6 +810,18 @@
       if (data.diff) {
         payload.diff = data.diff;
         ls('cc_diff', data.diff);
+      }
+      if (data.pet) { payload.pet = data.pet; ls('cc_pet', data.pet); }
+      if (data.trail) { payload.trail = data.trail; ls('cc_trail', data.trail); }
+      if (data.hat) { payload.hat = data.hat; ls('cc_hat', data.hat); }
+      if (data.voice) { payload.voice = data.voice; ls('cc_voice', data.voice); }
+      if (data.owned) {
+        payload.owned = data.owned.slice();
+        ls('cc_owned', payload.owned.join(','));
+      }
+      if (data.adsDisabled !== undefined) {
+        payload.adsOff = !!data.adsDisabled;
+        ls('cc_ads_off', data.adsDisabled ? '1' : '0');
       }
       if (data.meta) {
         payload.meta = data.meta;

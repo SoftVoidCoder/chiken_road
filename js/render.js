@@ -215,6 +215,11 @@
       }
     }
 
+    // питомец идёт рядом с курицей
+    if (G.state !== 'loading' && G.pet && G.pet !== 'none') {
+      A.drawPet(G.pet, pl.px - 20, pl.py + 22, G.t);
+    }
+
     // курица
     if (G.state !== 'loading') {
       A.drawChicken(pl.px, pl.py, pl.hop ? pl.hop.t : null, pl.facing, !pl.alive, G.t);

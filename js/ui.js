@@ -21,6 +21,9 @@
     score: $('vScore'), best: $('vBest'), coins: $('vCoins'),
     ovMenu: $('ovMenu'), ovOver: $('ovOver'), ovPause: $('ovPause'), ovLoading: $('ovLoading'),
     ovSkins: $('ovSkins'), ovThemes: $('ovThemes'),
+    ovModes: $('ovModes'), ovQuests: $('ovQuests'), ovAch: $('ovAch'), ovPass: $('ovPass'),
+    ovLeaders: $('ovLeaders'), ovStore: $('ovStore'), ovStats: $('ovStats'),
+    ovSettings: $('ovSettings'), ovTutorial: $('ovTutorial'),
     oScore: $('oScore'), oBest: $('oBest'), oRecord: $('oRecord'), oReason: $('tReason'),
     mBest: $('mBest'), mCoins: $('mCoins'),
     btnPlay: $('btnPlay'), btnRestart: $('btnRestart'), btnRevive: $('btnRevive'),
@@ -56,7 +59,9 @@
   }
 
   function showOnly(which) {
-    var list = [el.ovMenu, el.ovOver, el.ovPause, el.ovLoading, el.ovSkins, el.ovThemes];
+    var list = [el.ovMenu, el.ovOver, el.ovPause, el.ovLoading, el.ovSkins, el.ovThemes,
+      el.ovModes, el.ovQuests, el.ovAch, el.ovPass, el.ovLeaders, el.ovStore,
+      el.ovStats, el.ovSettings, el.ovTutorial];
     for (var i = 0; i < list.length; i++) {
       if (!list[i]) { continue; }
       list[i].classList.toggle('on', list[i].id === which);
@@ -143,8 +148,11 @@
     skinCards.push({ id: sk.id, node: node, canvas: cv, tag: tag, badge: badge, name: name });
   }
   function buildSkinCards() {
-    if (skinCards.length || !el.skinsGrid) { return; }
-    for (var i = 0; i < SK.list.length; i++) { makeSkinCard(SK.list[i]); }
+    // Магазин со слотами строит CC.screens: там же питомцы, следы, шапки и голоса
+    if (CC.screens && CC.screens.buildSlotTabs) {
+      CC.screens.buildSlotTabs();
+      CC.screens.buildSlotItems();
+    }
   }
   // превью перерисовываются на лету — «радуга» и «золотая» анимированы
   function drawSkinPreviews() {
@@ -161,6 +169,9 @@
   }
   function refreshSkins() {
     if (el.skCoins) { el.skCoins.textContent = String(G.totalCoins); }
+    if (CC.screens && CC.screens.buildSlotItems && el.ovSkins && el.ovSkins.classList.contains('on')) {
+      CC.screens.buildSlotItems();
+    }
     for (var i = 0; i < skinCards.length; i++) {
       var c = skinCards[i], sk = SK.byId[c.id];
       var owned = ownsSkin(c.id), worn = G.skin === c.id;
@@ -254,11 +265,14 @@
   // Превью скинов перерисовываются не каждый кадр, а примерно 12 раз в секунду:
   // этого хватает для анимации «радуги», но не грузит процессор.
   function tickPreviews() {
-    if (skinCards.length && el.ovSkins && el.ovSkins.classList.contains('on') && G.t - lastPreviewAt > 0.08) {
-      drawSkinPreviews();
+    if (el.ovSkins && el.ovSkins.classList.contains('on') && G.t - lastPreviewAt > 0.08) {
+      lastPreviewAt = G.t;
+      if (CC.screens && CC.screens.tick) { CC.screens.tick(); }
     }
   }
-  function skinCardsCount() { return skinCards.length; }
+  function skinCardsCount() {
+    return (CC.screens && CC.screens.cardCount) ? CC.screens.cardCount() : skinCards.length;
+  }
 
   // Смена биома: сохраняем выбор и обновляем кэши (палитры меняются целиком)
   function setTheme(id) {
@@ -341,6 +355,7 @@
     },
     menu: function () {
       buildThemeList();
+      if (CC.screens && CC.screens.refreshBadges) { CC.screens.refreshBadges(); }
       if (el.mBest) { el.mBest.textContent = String(bestFor()); }
       if (el.mCoins) { el.mCoins.textContent = String(G.totalCoins); }
       showOnly('ovMenu');
@@ -413,6 +428,24 @@
     if (document.hidden && G.state === 'playing') { togglePause(); }
   }, false);
 
+  // Единые точки изменения кошелька: через них проходят и покупки, и награды
+  function addCoins(n) {
+    G.totalCoins += Math.max(0, Math.round(n) || 0);
+    U.saveProfile();
+    syncHUD(true);
+    refreshSkins();
+    return G.totalCoins;
+  }
+  function spendCoins(n) {
+    n = Math.max(0, Math.round(n) || 0);
+    if (G.totalCoins < n) { return false; }
+    G.totalCoins -= n;
+    U.saveProfile();
+    syncHUD(true);
+    refreshSkins();
+    return true;
+  }
+
   U.expose(CC.ui, {
     $: $, el: el, syncHUD: syncHUD, showOnly: showOnly, showHint: showHint,
     hideHint: hideHint, toggleMute: toggleMute, togglePause: togglePause,
@@ -421,6 +454,7 @@
     drawSkinPreviews: drawSkinPreviews, buySkin: buySkin, equipSkin: equipSkin,
     pickSkin: pickSkin, screens: UI, tickPreviews: tickPreviews,
     skinCardsCount: skinCardsCount, setTheme: setTheme, buildThemeList: buildThemeList,
+    addCoins: addCoins, spendCoins: spendCoins,
     openThemes: openThemes, closeThemes: closeThemes,
     applyLang: UI.applyLang, menu: UI.menu, over: UI.over, pauseScreen: UI.pause,
     refreshRecord: UI.refreshRecord

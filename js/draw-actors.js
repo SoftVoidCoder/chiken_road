@@ -714,6 +714,163 @@
     R.ctx.beginPath(); R.ctx.arc(x0 + 2, 0, 2, 0, 6.2832); R.ctx.fill();
   }
 
+  /* --- кастомизация: шапки, следы, питомцы --------------------------------- */
+  // Всё рисуется в системе координат курицы, поэтому наклон и squash работают сами
+  function drawHatOnChicken(kind, t) {
+    if (!kind || kind === 'none') { return; }
+    var ctx = R.ctx;
+    if (kind === 'cap') {
+      ctx.fillStyle = '#3d7ce0';
+      ctx.beginPath(); ctx.arc(0, -19, 9.2, Math.PI, 0); ctx.closePath(); ctx.fill();
+      ctx.fillStyle = '#2f63b8';
+      ctx.fillRect(-1, -21, 12, 4);
+      ctx.fillStyle = '#ffd75e';
+      ctx.beginPath(); ctx.arc(0, -25, 2, 0, 6.2832); ctx.fill();
+    } else if (kind === 'crown') {
+      ctx.fillStyle = '#f2c94c';
+      ctx.beginPath();
+      ctx.moveTo(-9.5, -19); ctx.lineTo(-9.5, -26); ctx.lineTo(-4.5, -22);
+      ctx.lineTo(0, -28.5); ctx.lineTo(4.5, -22); ctx.lineTo(9.5, -26); ctx.lineTo(9.5, -19);
+      ctx.closePath(); ctx.fill();
+      ctx.fillStyle = '#e0a91c';
+      ctx.fillRect(-9.5, -20, 19, 3);
+      ctx.fillStyle = '#e8453c';
+      ctx.beginPath(); ctx.arc(0, -24, 1.7, 0, 6.2832); ctx.fill();
+    } else if (kind === 'helmet') {
+      ctx.fillStyle = '#8b99ab';
+      ctx.beginPath(); ctx.arc(0, -17, 10.4, Math.PI, 0); ctx.closePath(); ctx.fill();
+      ctx.fillStyle = 'rgba(255,255,255,0.35)';
+      ctx.fillRect(-10.4, -18.5, 21, 2.6);
+      ctx.fillStyle = '#5d6a7a';
+      ctx.fillRect(-10.4, -16.5, 21, 2);
+    } else if (kind === 'ushanka') {
+      ctx.fillStyle = '#8a6a3a';
+      ctx.beginPath(); ctx.arc(0, -18, 10.2, Math.PI, 0); ctx.closePath(); ctx.fill();
+      ctx.fillRect(-11.2, -19.5, 22.4, 4.4);
+      ctx.fillStyle = '#e8e2cf';
+      ctx.beginPath(); ctx.arc(-9.4, -15.6, 3.6, 0, 6.2832); ctx.fill();
+      ctx.beginPath(); ctx.arc(9.4, -15.6, 3.6, 0, 6.2832); ctx.fill();
+      ctx.beginPath(); ctx.arc(0, -27, 3, 0, 6.2832); ctx.fill();
+    }
+  }
+
+  function drawTrailOnChicken(kind, t, airborne) {
+    if (!kind || kind === 'none') { return; }
+    var ctx = R.ctx;
+    var n = 3;
+    for (var i = 0; i < n; i++) {
+      var ph = t * 3 + i * 1.1;
+      var a = 0.5 - i * 0.13;
+      var yy = 20 + i * 4;
+      var xx = Math.sin(ph) * 3;
+      ctx.globalAlpha = Math.max(0.1, a);
+      if (kind === 'feather') {
+        ctx.fillStyle = '#ffffff';
+        ctx.beginPath(); ctx.ellipse(xx, yy, 4, 1.8, ph * 0.4, 0, 6.2832); ctx.fill();
+      } else if (kind === 'spark') {
+        ctx.fillStyle = '#ffd75e';
+        ctx.fillRect(xx - 2, yy - 0.8, 4, 1.6);
+        ctx.fillRect(xx - 0.8, yy - 2, 1.6, 4);
+      } else if (kind === 'snow') {
+        ctx.fillStyle = '#dff1ff';
+        ctx.beginPath(); ctx.arc(xx, yy, 2, 0, 6.2832); ctx.fill();
+      } else if (kind === 'fire') {
+        ctx.fillStyle = i % 2 ? '#ff8a3d' : '#ffd75e';
+        ctx.beginPath(); ctx.arc(xx, yy, 3 - i * 0.5, 0, 6.2832); ctx.fill();
+      } else if (kind === 'rainbow') {
+        ctx.fillStyle = 'hsl(' + ((t * 120 + i * 60) % 360) + ',85%,62%)';
+        ctx.beginPath(); ctx.arc(xx, yy, 2.6, 0, 6.2832); ctx.fill();
+      }
+    }
+    ctx.globalAlpha = 1;
+  }
+
+  // Питомец: маленькая модель, идёт рядом с курицей
+  function drawPet(kind, x, y, t) {
+    if (!kind || kind === 'none') { return; }
+    var ctx = R.ctx;
+    var bob = Math.sin(t * 7) * 1.8;
+    var flap = Math.sin(t * 9) * 0.3;
+    ctx.save();
+    ctx.translate(x, y + bob);
+    shadow(0, 9 - bob, 9, 4, 0.20);
+    if (kind === 'chick') {
+      ctx.fillStyle = '#ffd84d';
+      ctx.beginPath(); ctx.ellipse(0, 0, 8, 7, 0, 0, 6.2832); ctx.fill();
+      ctx.fillStyle = '#ffe98a';
+      ctx.beginPath(); ctx.ellipse(-1, -1.4, 6, 5, 0, 0, 6.2832); ctx.fill();
+      ctx.fillStyle = '#f0a91c';
+      ctx.beginPath(); ctx.ellipse(-7, 1, 3, 2, -flap, 0, 6.2832); ctx.fill();
+      ctx.beginPath(); ctx.ellipse(7, 1, 3, 2, flap, 0, 6.2832); ctx.fill();
+      ctx.fillStyle = '#f5a623';
+      ctx.beginPath(); ctx.moveTo(-2, -6); ctx.lineTo(2, -6); ctx.lineTo(0, -9.5); ctx.closePath(); ctx.fill();
+      ctx.fillStyle = '#20242e';
+      ctx.beginPath(); ctx.arc(-2.6, -5, 1.1, 0, 6.2832); ctx.fill();
+      ctx.beginPath(); ctx.arc(2.6, -5, 1.1, 0, 6.2832); ctx.fill();
+    } else if (kind === 'duck') {
+      ctx.fillStyle = '#f7f9fc';
+      ctx.beginPath(); ctx.ellipse(0, 0, 9, 7.5, 0, 0, 6.2832); ctx.fill();
+      ctx.fillStyle = '#e9eef6';
+      ctx.beginPath(); ctx.ellipse(-6, 1, 4, 3, -flap, 0, 6.2832); ctx.fill();
+      ctx.fillStyle = '#f7f9fc';
+      ctx.beginPath(); ctx.arc(0, -8, 5.4, 0, 6.2832); ctx.fill();
+      ctx.fillStyle = '#f2c94c';
+      ctx.beginPath(); ctx.moveTo(-2.4, -8); ctx.lineTo(2.4, -8); ctx.lineTo(0, -12); ctx.closePath(); ctx.fill();
+      ctx.fillStyle = '#20242e';
+      ctx.beginPath(); ctx.arc(-2, -9, 1, 0, 6.2832); ctx.fill();
+      ctx.beginPath(); ctx.arc(2, -9, 1, 0, 6.2832); ctx.fill();
+    } else if (kind === 'dragon') {
+      ctx.fillStyle = '#4aa858';
+      ctx.beginPath(); ctx.ellipse(0, 0, 9, 7, 0, 0, 6.2832); ctx.fill();
+      ctx.fillStyle = '#7fd18f';
+      ctx.beginPath(); ctx.ellipse(0, 1, 6, 4.6, 0, 0, 6.2832); ctx.fill();
+      ctx.fillStyle = '#3f8f4a';
+      ctx.beginPath(); ctx.ellipse(-8, -2, 5, 2.6, -0.5 - flap, 0, 6.2832); ctx.fill();
+      ctx.beginPath(); ctx.ellipse(8, -2, 5, 2.6, 0.5 + flap, 0, 6.2832); ctx.fill();
+      // дымок из ноздрей
+      ctx.fillStyle = 'rgba(255,255,255,' + (0.25 + Math.abs(Math.sin(t * 4)) * 0.3).toFixed(2) + ')';
+      ctx.beginPath(); ctx.arc(0, -12 - Math.sin(t * 3) * 2, 3.4, 0, 6.2832); ctx.fill();
+      ctx.fillStyle = '#f2c94c';
+      ctx.beginPath(); ctx.arc(-2.4, -6, 1.2, 0, 6.2832); ctx.fill();
+      ctx.beginPath(); ctx.arc(2.4, -6, 1.2, 0, 6.2832); ctx.fill();
+    }
+    ctx.restore();
+  }
+
+  // Превью для магазина: те же модели, увеличенные
+  function drawHatPreview(id) {
+    var ctx = R.ctx;
+    if (id === 'none') {
+      ctx.fillStyle = 'rgba(120,130,150,0.5)';
+      ctx.beginPath(); ctx.arc(0, 0, 13, 0, 6.2832); ctx.fill();
+      return;
+    }
+    ctx.scale(1.5, 1.5);
+    drawHatOnChicken(id, 0);
+  }
+
+  function drawTrailPreview(id) {
+    var ctx = R.ctx;
+    if (id === 'none') {
+      ctx.fillStyle = 'rgba(120,130,150,0.5)';
+      ctx.beginPath(); ctx.arc(0, 0, 10, 0, 6.2832); ctx.fill();
+      return;
+    }
+    ctx.scale(1.6, 1.6);
+    drawTrailOnChicken(id, G.t, false);
+  }
+
+  function drawVoicePreview(id) {
+    var ctx = R.ctx;
+    var col = id === 'squeak' ? '#ffd75e' : (id === 'robot' ? '#8fd3ff' : (id === 'duck' ? '#f2c94c' : '#c9ced8'));
+    ctx.fillStyle = col;
+    ctx.beginPath(); ctx.arc(0, 2, 9, 0, 6.2832); ctx.fill();
+    ctx.fillStyle = 'rgba(20,26,40,0.75)';
+    ctx.beginPath(); ctx.moveTo(-2, 6); ctx.lineTo(-2, -2); ctx.lineTo(4, -6); ctx.lineTo(4, 10); ctx.closePath(); ctx.fill();
+    ctx.strokeStyle = col; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.arc(0, 2, 13, -0.9, 0.9); ctx.stroke();
+  }
+
   /* --- диспетчер моделей ---------------------------------------------------- */
   function drawVehicle(x, y, kind, dir, color, ph) {
     var spec = KIND[kind] || KIND.car;
@@ -836,6 +993,9 @@
 
     // украшения скина (рисуются поверх и вращаются вместе с курицей)
     if (sk.extra) { drawSkinExtra(sk, t, airborne); }
+    // шапка из слота кастомизации и эффект следа
+    drawHatOnChicken(G.hat, t);
+    drawTrailOnChicken(G.trail, t, airborne);
 
     R.ctx.restore();
 
@@ -1001,6 +1161,8 @@
   U.expose(CC.actors, {
     drawVehicle: drawVehicle, drawVehicleCached: drawVehicleCached,
     drawChicken: drawChicken, drawSkinExtra: drawSkinExtra,
-    drawSkinPreview: drawSkinPreview, clearVehicleSprites: clearVehicleSprites
+    drawSkinPreview: drawSkinPreview, clearVehicleSprites: clearVehicleSprites,
+    drawPet: drawPet, drawHatOnChicken: drawHatOnChicken, drawTrailOnChicken: drawTrailOnChicken,
+    drawHatPreview: drawHatPreview, drawTrailPreview: drawTrailPreview, drawVoicePreview: drawVoicePreview
   });
 })(window.CC);

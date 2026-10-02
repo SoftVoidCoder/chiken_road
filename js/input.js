@@ -39,19 +39,80 @@
     ArrowLeft: 'left', KeyA: 'left', ArrowRight: 'right', KeyD: 'right'
   };
 
+  /* --- Навигация по интерфейсу для ТВ-пульта -------------------------------
+     Пульт даёт по одному событию за раз: стрелки двигают выделение по кнопкам
+     экрана, OK (Enter) нажимает, Back (Escape) возвращает в меню. Это закрывает
+     требования площадки 1.6.3.2 и 1.6.3.3. */
+  var focusIndex = 0;
+
+  function overlayOpen() {
+    var ids = ['ovMenu', 'ovSkins', 'ovThemes', 'ovModes', 'ovQuests', 'ovAch', 'ovPass',
+      'ovLeaders', 'ovStore', 'ovStats', 'ovSettings', 'ovTutorial'];
+    for (var i = 0; i < ids.length; i++) {
+      var n = UI.el[ids[i]];
+      if (n && n.classList && n.classList.contains('on')) { return true; }
+    }
+    return false;
+  }
+
+  function screenButtons() {
+    var scope = document.querySelector ? document.querySelector('.overlay.on') : null;
+    if (!scope || !scope.querySelectorAll) { return []; }
+    var nodes = scope.querySelectorAll('button');
+    var out = [];
+    for (var i = 0; i < nodes.length; i++) {
+      if (!nodes[i].hidden && !nodes[i].disabled) { out.push(nodes[i]); }
+    }
+    return out;
+  }
+
+  function moveFocus(step) {
+    var list = screenButtons();
+    if (!list.length) { return false; }
+    if (focusIndex >= list.length) { focusIndex = 0; }
+    focusIndex = (focusIndex + step + list.length) % list.length;
+    for (var i = 0; i < list.length; i++) {
+      if (list[i].classList && list[i].classList.remove) { list[i].classList.remove('focus'); }
+    }
+    var cur = list[focusIndex];
+    if (cur.classList && cur.classList.add) { cur.classList.add('focus'); }
+    if (cur.scrollIntoView) { try { cur.scrollIntoView({ block: 'nearest' }); } catch (e) {} }
+    return true;
+  }
+
+  function activateFocus() {
+    var list = screenButtons();
+    if (!list.length) { return false; }
+    var cur = list[Math.min(focusIndex, list.length - 1)];
+    if (cur && cur.click) { cur.click(); return true; }
+    return false;
+  }
+  function resetFocus() { focusIndex = 0; moveFocus(0); }
+
   window.addEventListener('keydown', function (e) {
     if (KEYMAP[e.code]) {
       e.preventDefault();
-      if (G.state === 'playing') { press(KEYMAP[e.code]); }
+      if (G.state === 'playing') { press(KEYMAP[e.code]); return; }
+      // вне игры стрелки водят выделение по кнопкам открытого экрана
+      if (overlayOpen()) {
+        if (e.code === 'ArrowUp' || e.code === 'ArrowLeft') { moveFocus(-1); }
+        else if (e.code === 'ArrowDown' || e.code === 'ArrowRight') { moveFocus(1); }
+      }
       return;
     }
     if (e.code === 'KeyM') { UI.toggleMute(); return; }
-    if (e.code === 'KeyP' || e.code === 'Escape') {
-      if (UI.el.ovSkins && UI.el.ovSkins.classList.contains('on')) { UI.closeSkins(); return; }
+    if (e.code === 'KeyP' || e.code === 'Escape' || e.key === 'BrowserBack') {
+      // Back на пульте: сначала закрываем открытый экран, потом уже пауза
+      if (G.state !== 'playing' && overlayOpen()) {
+        if (CC.screens && CC.screens.closeToMenu) { CC.screens.closeToMenu(); return; }
+        if (UI.closeSkins) { UI.closeSkins(); return; }
+      }
       UI.togglePause();
       return;
     }
     if (e.code === 'Space' || e.code === 'Enter') {
+      // на экранах OK нажимает выделенную кнопку
+      if (G.state !== 'playing' && overlayOpen() && activateFocus()) { e.preventDefault(); return; }
       if (G.state === 'menu') { GM.startGame(); }
       else if (G.state === 'over') { GM.startGame(); }
       else if (G.state === 'paused') { UI.togglePause(); }
@@ -96,5 +157,9 @@
     window.addEventListener('orientationchange', function () { setTimeout(U.resize, 120); }, false);
   }
 
-  U.expose(CC.input, { press: press, release: release, DIRS: DIRS, KEYMAP: KEYMAP });
+  U.expose(CC.input, {
+    press: press, release: release, DIRS: DIRS, KEYMAP: KEYMAP,
+    moveFocus: moveFocus, activateFocus: activateFocus, resetFocus: resetFocus,
+    overlayOpen: overlayOpen
+  });
 })(window.CC);

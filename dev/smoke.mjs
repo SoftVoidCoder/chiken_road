@@ -18,7 +18,7 @@ const MODULES = [
   'js/platform.js', 'js/meta.js', 'js/audio.js',
   'js/draw-world.js', 'js/draw-decor.js', 'js/draw-actors.js',
   'js/world.js', 'js/mechanics.js', 'js/gameplay.js', 'js/render.js', 'js/input.js',
-  'js/ui.js', 'js/main.js'
+  'js/ui.js', 'js/screens.js', 'js/main.js'
 ];
 const sources = MODULES.map((f) => ({ file: f, code: fs.readFileSync(path.join(root, f), 'utf8') }));
 
@@ -63,7 +63,10 @@ function makeEl(id) {
     },
     addEventListener(t, f) { (ls[t] = ls[t] || []).push(f); },
     removeEventListener() {},
-    setAttribute() {}, getAttribute() { return null; },
+    _attrs: {},
+    setAttribute(k, v) { this._attrs[k] = String(v); },
+    getAttribute(k) { return this._attrs[k] === undefined ? null : this._attrs[k]; },
+    removeAttribute(k) { delete this._attrs[k]; },
     getContext() { return ctx; },
     appendChild(node) { if (node && node.onerror) { setTimeout(() => node.onerror(), 0); } },
     focus() {}, blur() {},
@@ -164,6 +167,7 @@ function step(title, fn) {
   for (const m of sources) { vm.runInContext(m.code, sandbox, { filename: m.file }); }
 
   const G = sandbox.window.__CHICKEN__;
+  const CC_SETTINGS = sandbox.window.CC.settings;
   assert(!!G, 'движок не выставил __CHICKEN__');
 
   step('кадры идут в состоянии загрузки/меню', () => {
@@ -177,7 +181,15 @@ function step(title, fn) {
     tick(5);
     assert(G.G.state === 'menu', 'ожидалось menu, получили ' + G.G.state);
     assert(listeners.byId.btnPlay.textContent === 'Играть', 'кнопка не локализована: ' + listeners.byId.btnPlay.textContent);
-    assert(!listeners.byId.ovMenu.classList.contains('on') === false, 'меню не показано');
+    // при первом запуске поверх меню показывается обучение — это нормально
+    const menuOn = listeners.byId.ovMenu.classList.contains('on');
+    const tutOn = listeners.byId.ovTutorial.classList.contains('on');
+    assert(menuOn || tutOn, 'ни меню, ни обучение не показаны');
+    // пролистываем обучение до конца и проверяем, что открывается меню
+    for (let i = 0; i < 6 && listeners.byId.ovTutorial.classList.contains('on'); i++) {
+      listeners.byId.btnTutNext._fire('click');
+    }
+    assert(listeners.byId.ovMenu.classList.contains('on'), 'после обучения меню не открылось');
   });
 
   step('запуск игры кнопкой', () => {
@@ -637,6 +649,77 @@ function step(title, fn) {
     assert(checked > 0, 'не удалось собрать сцену со льдом');
     G.meta().stats.rows = saved;
     G.setTheme('meadow');
+  });
+
+  step('экраны прогрессии открываются и наполняются', () => {
+    releaseAll();
+    G.toMenu();
+    const names = ['modes', 'quests', 'ach', 'pass', 'leaders', 'store', 'stats', 'settings', 'skins', 'maps'];
+    for (const name of names) {
+      G.openScreen(name);
+      assert(G.screens().открыто === true, 'экран не открылся: ' + name);
+    }
+    G.closeScreens();
+    assert(listeners.byId.ovMenu.classList.contains('on'), 'после закрытия экрана меню не показалось');
+    // режимы: выбор сохраняется
+    const modeList = G.screens();
+    assert(modeList.режимов === 6, 'должно быть 6 режимов, есть ' + modeList.режимов);
+    G.setMode('water');
+    assert(G.mode() === 'water', 'режим не переключился');
+    G.setMode('classic');
+    // магазин со слотами: покупка питомца и надевание
+    G.setCoins(5000);
+    G.openScreen('skins');
+    assert(G.screens().предметовВМагазине > 0, 'магазин пуст');
+    assert(G.pickSlotItem('pet', 'chick') === true, 'питомец не куплен');
+    assert(G.cosmetics().pet === 'chick', 'питомец не надет: ' + G.cosmetics().pet);
+    assert(G.cosmetics().pets === 2, 'питомец не попал в список купленных');
+    assert(G.pickSlotItem('hat', 'cap') === true, 'шапка не куплена');
+    assert(G.cosmetics().hat === 'cap', 'шапка не надета');
+    assert(G.pickSlotItem('trail', 'spark') === true, 'след не куплен');
+    assert(G.cosmetics().trail === 'spark', 'след не надет');
+    G.closeScreens();
+    // настройки применяются к документу
+    CC_SETTINGS.set('ui', 'big');
+    assert(documentStub.documentElement.getAttribute('data-ui') === 'big', 'крупный интерфейс не применился');
+    CC_SETTINGS.set('ui', 'normal');
+    CC_SETTINGS.set('colorblind', 'protan');
+    assert(documentStub.documentElement.getAttribute('data-cb') === 'protan', 'режим для дальтоников не применился');
+    CC_SETTINGS.set('colorblind', 'off');
+  });
+
+  step('питомец, шапка и след рисуются в кадре', () => {
+    releaseAll();
+    G.start();
+    tick(10);
+    // все варианты кастомизации должны рисоваться без исключений
+    const pets = ['none', 'chick', 'duck', 'dragon'];
+    const hats = ['none', 'cap', 'crown', 'helmet', 'ushanka'];
+    const trails = ['none', 'feather', 'spark', 'snow', 'rainbow', 'fire'];
+    for (const p of pets) {
+      for (const h of hats) {
+        G.G.pet = p; G.G.hat = h; G.G.trail = trails[(pets.indexOf(p) + hats.indexOf(h)) % trails.length];
+        tick(3);
+      }
+    }
+    G.G.pet = 'chick'; G.G.hat = 'crown'; G.G.trail = 'rainbow';
+    for (let i = 0; i < 30; i++) { G.tryMove(0, 1); tick(8); }
+    assert(G.G.pet === 'chick' && G.G.hat === 'crown', 'кастомизация сбросилась сама');
+    G.G.pet = 'none'; G.G.hat = 'none'; G.G.trail = 'none';
+  });
+
+  step('ТВ-пульт: стрелки водят выделение, OK нажимает, Back закрывает', () => {
+    releaseAll();
+    G.toMenu();
+    G.openScreen('modes');
+    const input = sandbox.CC ? sandbox.CC.input : null;
+    assert(input, 'модуль ввода недоступен');
+    assert(input.overlayOpen() === true, 'экран не распознан как открытый');
+    // на пустом наборе кнопок навигация не должна падать
+    input.moveFocus(1);
+    input.activateFocus();
+    key('Escape');
+    assert(listeners.byId.ovMenu.classList.contains('on'), 'Back не вернул в меню');
   });
 
   step('все 25 биомов играются без ошибок', () => {

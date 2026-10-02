@@ -8,7 +8,7 @@
 <!-- 2D-спрайты рисуются на Canvas процедурно: внешних картинок и звуков нет.
      SDK Яндекс Игр подключается асинхронно из js/platform.js, а не блокирующим тегом. -->
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%237ec850'/%3E%3Ccircle cx='16' cy='18' r='8' fill='%23fff'/%3E%3Ccircle cx='16' cy='10' r='5' fill='%23fff'/%3E%3Cpath d='M13 6l3-4 3 4z' fill='%23f5a623'/%3E%3Ccircle cx='14' cy='10' r='1.2' fill='%2320242e'/%3E%3Ccircle cx='18' cy='10' r='1.2' fill='%2320242e'/%3E%3C/svg%3E">
-<link rel="stylesheet" href="css/style.css?v=6">
+<link rel="stylesheet" href="css/style.css?v=7">
 </head>
 <body>
 <canvas id="game"></canvas>
@@ -30,6 +30,7 @@
 </div>
 
 <div id="hintEagle"></div>
+<div id="toast"></div>
 
 <!-- загрузка -->
 <div class="overlay on" id="ovLoading">
@@ -70,8 +71,20 @@
     <div class="seghint" id="tDiffHint">Машины едут медленнее, зазоры шире, орёл ждёт дольше.</div>
 
     <button class="btn primary" id="btnPlay">Играть</button>
-    <button class="btn ghost" id="btnMenuSkins">🐔 <span id="tMenuSkins">Скины</span></button>
-    <button class="btn ghost" id="btnMenuMaps">🗺️ <span id="tMenuMaps">Карты</span></button>
+    <div class="menugrid">
+      <button class="mbtn" id="btnMenuSkins"><span class="ic">🐔</span><span id="tMenuSkins">Скины</span></button>
+      <button class="mbtn" id="btnMenuMaps"><span class="ic">🗺️</span><span id="tMenuMaps">Карты</span></button>
+      <button class="mbtn" id="btnMenuModes"><span class="ic">🎮</span><span id="tMenuModes">Режимы</span></button>
+      <button class="mbtn" id="btnMenuQuests"><span class="ic">📋</span><span id="tMenuQuests">Задания</span><span class="dot" id="questDot" hidden></span></button>
+      <button class="mbtn" id="btnMenuAch"><span class="ic">🏆</span><span id="tMenuAch">Достижения</span></button>
+      <button class="mbtn" id="btnMenuPass"><span class="ic">🎫</span><span id="tMenuPass">Сезон</span></button>
+      <button class="mbtn" id="btnMenuLeaders"><span class="ic">📊</span><span id="tMenuLeaders">Рейтинг</span></button>
+      <button class="mbtn" id="btnMenuStore"><span class="ic">💎</span><span id="tMenuStore">Магазин</span></button>
+      <button class="mbtn" id="btnMenuStats"><span class="ic">📈</span><span id="tMenuStats">Статистика</span></button>
+      <button class="mbtn" id="btnMenuSettings"><span class="ic">⚙️</span><span id="tMenuSettings">Настройки</span></button>
+      <button class="mbtn wide" id="btnMenuDaily"><span class="ic">📅</span><span id="tMenuDaily">Испытание дня</span><span class="dot" id="dailyDot" hidden></span></button>
+      <button class="mbtn wide" id="btnMenuTutorial"><span class="ic">❓</span><span id="tMenuTutorial">Как играть</span></button>
+    </div>
     <div class="keys" id="tControls">WASD / стрелки — шаг, P — пауза, M — звук</div>
     <div class="keys" id="tControls2" style="margin-top:2px">Тап — вперёд, свайп — в сторону</div>
     <div class="stats"><span id="mLblBest">Рекорд</span>: <b id="mBest">0</b> · <span id="mLblCoins">Монеты</span>: <b id="mCoins">0</b></div>
@@ -112,6 +125,99 @@
   </div>
 </div>
 
+
+<!-- режимы и бусты -->
+<div class="overlay" id="ovModes">
+  <div class="panel listpanel">
+    <h2 id="tModes">Режимы</h2>
+    <div class="keys" id="tModesHint">Режим меняет правила всего забега.</div>
+    <div class="themegrid" id="modeGrid"></div>
+    <h3 class="subh" id="tBoosts">Бусты</h3>
+    <div class="boostrow" id="boostRow"></div>
+    <button class="btn primary" id="btnModesClose">Назад</button>
+  </div>
+</div>
+
+<!-- задания -->
+<div class="overlay" id="ovQuests">
+  <div class="panel listpanel">
+    <h2 id="tQuests">Задания</h2>
+    <div class="wallet"><span>🪙</span><b id="qCoins">0</b></div>
+    <div class="listbox" id="questList"></div>
+    <button class="btn primary" id="btnQuestsClose">Назад</button>
+  </div>
+</div>
+
+<!-- достижения -->
+<div class="overlay" id="ovAch">
+  <div class="panel listpanel">
+    <h2 id="tAch">Достижения</h2>
+    <div class="listbox" id="achList"></div>
+    <button class="btn primary" id="btnAchClose">Назад</button>
+  </div>
+</div>
+
+<!-- сезон -->
+<div class="overlay" id="ovPass">
+  <div class="panel listpanel">
+    <h2 id="tPass">Сезон</h2>
+    <div class="wallet"><span id="tPassLevel">Уровень</span> <b id="passLevel">1</b></div>
+    <div class="listbox" id="passList"></div>
+    <button class="btn ad" id="btnPassPremium">Купить премиум</button>
+    <button class="btn primary" id="btnPassClose">Назад</button>
+  </div>
+</div>
+
+<!-- рейтинг -->
+<div class="overlay" id="ovLeaders">
+  <div class="panel listpanel">
+    <h2 id="tLeaders">Рейтинг</h2>
+    <div class="keys" id="tLeadersHint">Лучшие игроки со всей площадки.</div>
+    <div class="listbox" id="lbList"></div>
+    <button class="btn primary" id="btnLeadersClose">Назад</button>
+  </div>
+</div>
+
+<!-- магазин наборов -->
+<div class="overlay" id="ovStore">
+  <div class="panel listpanel">
+    <h2 id="tStore">Магазин</h2>
+    <div class="keys" id="tStoreHint">Покупки проходят через Яндекс Игры.</div>
+    <div class="listbox" id="storeList"></div>
+    <button class="btn primary" id="btnStoreClose">Назад</button>
+  </div>
+</div>
+
+<!-- статистика -->
+<div class="overlay" id="ovStats">
+  <div class="panel listpanel">
+    <h2 id="tStats">Статистика</h2>
+    <div class="listbox" id="statList"></div>
+    <button class="btn ghost" id="btnRate">Оценить игру</button>
+    <button class="btn ghost" id="btnAuth">Войти в Яндекс</button>
+    <button class="btn ghost" id="btnStatsReset">Сбросить прогресс</button>
+    <button class="btn primary" id="btnStatsClose">Назад</button>
+  </div>
+</div>
+
+<!-- настройки -->
+<div class="overlay" id="ovSettings">
+  <div class="panel listpanel">
+    <h2 id="tSettings">Настройки</h2>
+    <div class="listbox" id="setList"></div>
+    <button class="btn primary" id="btnSettingsClose">Назад</button>
+  </div>
+</div>
+
+<!-- обучение -->
+<div class="overlay" id="ovTutorial">
+  <div class="panel">
+    <h2 id="tTutorial">Как играть</h2>
+    <p class="sub" id="tutText"></p>
+    <button class="btn primary" id="btnTutNext">Понятно!</button>
+  </div>
+</div>
+
 <!-- пауза -->
 <div class="overlay" id="ovPause">
   <div class="panel">
@@ -122,6 +228,7 @@
       <span class="chip diff" id="pDiff">Обычно</span>
     </div>
     <button class="btn primary resume" id="btnResume"><span class="ic">▶</span><span id="tResume">Продолжить</span></button>
+    <div class="boostrow" id="pauseBoostRow"></div>
     <div class="tiles">
       <button class="tile" id="btnRestart2"><span class="ic">⟲</span><span id="tRestart">Заново</span></button>
       <button class="tile" id="btnPauseSound"><span class="ic" id="icPauseSound">🔊</span><span id="tSound">Звук</span></button>
@@ -135,23 +242,24 @@
 <!-- Порядок подключения важен: ядро создаёт шину CC и кэши, i18n идёт до platform
      (он подмешивает контентные строки), draw-world до draw-actors (тот берёт у него
      примитивы), а main запускает цикл последним. Сборщик не нужен. -->
-<script src="js/core.js?v=6"></script>
+<script src="js/core.js?v=7"></script>
 <script src="js/i18n.js"></script>
-<script src="js/themes.js?v=6"></script>
-<script src="js/skins.js?v=6"></script>
-<script src="js/settings.js?v=6"></script>
-<script src="js/platform.js?v=6"></script>
-<script src="js/meta.js?v=6"></script>
-<script src="js/audio.js?v=6"></script>
-<script src="js/draw-world.js?v=6"></script>
-<script src="js/draw-decor.js?v=6"></script>
-<script src="js/draw-actors.js?v=6"></script>
-<script src="js/world.js?v=6"></script>
-<script src="js/mechanics.js?v=6"></script>
-<script src="js/gameplay.js?v=6"></script>
-<script src="js/render.js?v=6"></script>
-<script src="js/input.js?v=6"></script>
-<script src="js/ui.js?v=6"></script>
-<script src="js/main.js?v=6"></script>
+<script src="js/themes.js?v=7"></script>
+<script src="js/skins.js?v=7"></script>
+<script src="js/settings.js?v=7"></script>
+<script src="js/platform.js?v=7"></script>
+<script src="js/meta.js?v=7"></script>
+<script src="js/audio.js?v=7"></script>
+<script src="js/draw-world.js?v=7"></script>
+<script src="js/draw-decor.js?v=7"></script>
+<script src="js/draw-actors.js?v=7"></script>
+<script src="js/world.js?v=7"></script>
+<script src="js/mechanics.js?v=7"></script>
+<script src="js/gameplay.js?v=7"></script>
+<script src="js/render.js?v=7"></script>
+<script src="js/input.js?v=7"></script>
+<script src="js/ui.js?v=7"></script>
+<script src="js/screens.js?v=7"></script>
+<script src="js/main.js?v=7"></script>
 </body>
 </html>

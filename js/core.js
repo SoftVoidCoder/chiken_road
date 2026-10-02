@@ -170,6 +170,10 @@
     coins: 0, totalCoins: 0,
     diffId: 'normal', bests: { easy: 0, normal: 0, hard: 0 },
     skin: 'classic', skins: ['classic'],
+    // остальные слоты внешнего вида: питомец, след, шапка, голос
+    pet: 'none', trail: 'none', hat: 'none', voice: 'classic',
+    ownedPets: ['none'], ownedTrails: ['none'], ownedHats: ['none'], ownedVoices: ['classic'],
+    adsDisabled: false, passPremium: false, tutorialDone: false,
     themeId: 'meadow',            // активный биом
     daily: false,                  // идёт испытание дня
     night: 0,                      // 0..1 — насколько сейчас темно
@@ -207,6 +211,10 @@
       skins: G.skins.slice(),
       skin: G.skin,
       diff: G.diffId,
+      pet: G.pet, trail: G.trail, hat: G.hat, voice: G.voice,
+      ownedPets: G.ownedPets.slice(), ownedTrails: G.ownedTrails.slice(),
+      ownedHats: G.ownedHats.slice(), ownedVoices: G.ownedVoices.slice(),
+      adsDisabled: G.adsDisabled ? 1 : 0, tutorialDone: G.tutorialDone ? 1 : 0,
       meta: CC.meta && CC.meta.toSave ? CC.meta.toSave() : null,
       settings: CC.settings && CC.settings.toSave ? CC.settings.toSave() : null
     };
