@@ -21,7 +21,7 @@
     score: $('vScore'), best: $('vBest'), coins: $('vCoins'),
     ovMenu: $('ovMenu'), ovOver: $('ovOver'), ovPause: $('ovPause'), ovLoading: $('ovLoading'),
     ovSkins: $('ovSkins'), ovThemes: $('ovThemes'),
-    ovModes: $('ovModes'), ovQuests: $('ovQuests'), ovAch: $('ovAch'), ovPass: $('ovPass'),
+    ovModes: $('ovModes'), ovQuests: $('ovQuests'), ovAch: $('ovAch'),
     ovLeaders: $('ovLeaders'), ovStore: $('ovStore'), ovStats: $('ovStats'),
     ovSettings: $('ovSettings'), ovTutorial: $('ovTutorial'),
     oScore: $('oScore'), oBest: $('oBest'), oRecord: $('oRecord'), oReason: $('tReason'),
@@ -75,7 +75,7 @@
 
   function showOnly(which) {
     var list = [el.ovMenu, el.ovOver, el.ovPause, el.ovLoading, el.ovSkins, el.ovThemes,
-      el.ovModes, el.ovQuests, el.ovAch, el.ovPass, el.ovLeaders, el.ovStore,
+      el.ovModes, el.ovQuests, el.ovAch, el.ovLeaders, el.ovStore,
       el.ovStats, el.ovSettings, el.ovTutorial];
     for (var i = 0; i < list.length; i++) {
       if (!list[i]) { continue; }
@@ -123,9 +123,19 @@
     }
   }
 
-  /* --- сложность ------------------------------------------------------------ */
+  /* --- сложность и режим ---------------------------------------------------- */
   function diffKey(id, suffix) {
     return 'diff' + id.charAt(0).toUpperCase() + id.slice(1) + (suffix || '');
+  }
+  // В паузе показываем и сложность, и режим: в «классике» режим не подписываем
+  function diffAndMode() {
+    var text = Pl.t(diffKey(G.diffId));
+    var modes = CC.screens && CC.screens.MODES;
+    if (!modes || !G.modeId || G.modeId === 'classic') { return text; }
+    for (var i = 0; i < modes.length; i++) {
+      if (modes[i].id === G.modeId) { return text + ' · ' + Pl.t(modes[i].name); }
+    }
+    return text;
   }
   function setDiff(id, silent) {
     if (!DIFFS[id]) { id = 'normal'; }
@@ -139,7 +149,7 @@
       btns[i].classList.toggle('on', id2 === id);
     }
     if (el.diffHint) { el.diffHint.textContent = Pl.t(diffKey(id, 'Hint')); }
-    if (el.pDiff) { el.pDiff.textContent = Pl.t(diffKey(id)); }
+    if (el.pDiff) { el.pDiff.textContent = diffAndMode(); }
     UI.refreshRecord();
     if (!silent) { saveProfile(); }
     return changed;
@@ -376,7 +386,7 @@
       setT('tDiffNormal', 'diffNormal'); setT('tDiffNormalSub', 'diffNormalSub');
       setT('tDiffHard', 'diffHard'); setT('tDiffHardSub', 'diffHardSub');
       if (el.diffHint) { el.diffHint.textContent = Pl.t(diffKey(G.diffId, 'Hint')); }
-      if (el.pDiff) { el.pDiff.textContent = Pl.t(diffKey(G.diffId)); }
+      if (el.pDiff) { el.pDiff.textContent = diffAndMode(); }
       // скины
       setT('tMenuSkins', 'skins'); setT('tSkins', 'skins'); setT('tWallet', 'wallet');
       setT('tMenuMaps', 'maps'); setT('tMaps', 'maps'); setT('tMapsHint', 'mapsHint');
@@ -415,7 +425,7 @@
       if (CC.screens && CC.screens.buildBoosts) { CC.screens.buildBoosts('pauseBoostRow', false); }
       if (el.pScore) { el.pScore.textContent = String(G.score); }
       if (el.pCoins) { el.pCoins.textContent = String(G.coins); }
-      if (el.pDiff) { el.pDiff.textContent = Pl.t(diffKey(G.diffId)); }
+      if (el.pDiff) { el.pDiff.textContent = diffAndMode(); }
     },
     skins: openSkins
   };

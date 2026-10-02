@@ -93,7 +93,11 @@
     f1:        { len: 1.35, sp: 1.55 },   // болид
     drone:     { len: 0.95, sp: 1.40 },   // дрон
     plane:     { len: 2.60, sp: 1.30 },   // самолёт на взлётной полосе
-    sleigh:    { len: 1.30, sp: 1.10 }    // сани (если модель не нарисована — станет car)
+    sleigh:    { len: 1.30, sp: 1.10 },   // сани (если модель не нарисована — станет car)
+    mixer:     { len: 2.40, sp: 0.70 },   // бетономешалка (стройка)
+    roller:    { len: 1.55, sp: 0.62 },   // каток (стройка)
+    lift:      { len: 1.70, sp: 0.74 },   // вышка-подъёмник (стройка)
+    hover:     { len: 1.60, sp: 1.22 }    // парящая машина (киберпанк)
   };
   var CAR_COLORS = {
     car:       ['#e05a47', '#3d7ce0', '#59b36b', '#8b5cf6', '#e8792b', '#d94f7d'],
@@ -226,6 +230,7 @@
       skins: G.skins.slice(),
       skin: G.skin,
       diff: G.diffId,
+      mode: G.modeId,
       pet: G.pet, trail: G.trail, hat: G.hat, voice: G.voice,
       ownedPets: G.ownedPets.slice(), ownedTrails: G.ownedTrails.slice(),
       ownedHats: G.ownedHats.slice(), ownedVoices: G.ownedVoices.slice(),

@@ -233,9 +233,87 @@
     R.ctx.restore();
   }
 
-  /* --- брёвна и лилии ------------------------------------------------------- */
+  /* --- плавучие опоры: бревно, льдина, понтон, неон, катер -------------------
+     Набор зависит от карты (theme().waterMain / waterAlt), поэтому зимой по реке
+     плывут льдины, на стройке — понтоны, в киберпанке — светящиеся платформы. */
   function drawLog(x, y, len, kind) {
     var w = len * TS;
+    var th = theme();
+
+    // Льдина: голубоватая плита с трещинами, по краям снег
+    if (kind === 'ice') {
+      shadow(x, y + 5, w * 0.5, 8, 0.20);
+      R.ctx.fillStyle = '#8ec8ea';
+      rr(x - w / 2, y - 11, w, 22, 7); R.ctx.fill();
+      R.ctx.fillStyle = '#c8e8fb';
+      rr(x - w / 2 + 2, y - 9, w - 4, 16, 6); R.ctx.fill();
+      R.ctx.fillStyle = 'rgba(255,255,255,0.85)';
+      rr(x - w / 2 + 3, y - 9, w - 6, 5, 3); R.ctx.fill();
+      if (R.fine) {
+        R.ctx.strokeStyle = 'rgba(90,140,180,0.55)'; R.ctx.lineWidth = 1.2;
+        R.ctx.beginPath();
+        R.ctx.moveTo(x - w * 0.22, y - 5); R.ctx.lineTo(x - w * 0.1, y + 1); R.ctx.lineTo(x - w * 0.2, y + 7);
+        R.ctx.moveTo(x + w * 0.08, y - 6); R.ctx.lineTo(x + w * 0.2, y + 2);
+        R.ctx.stroke();
+      }
+      return;
+    }
+
+    // Понтон: металлическая платформа с бочками и бортиком
+    if (kind === 'pontoon') {
+      shadow(x, y + 6, w * 0.5, 8, 0.24);
+      R.ctx.fillStyle = '#6c7076';
+      rr(x - w / 2, y - 10, w, 20, 5); R.ctx.fill();
+      R.ctx.fillStyle = '#8b9098';
+      rr(x - w / 2 + 2, y - 8, w - 4, 14, 4); R.ctx.fill();
+      R.ctx.fillStyle = '#f0b429';
+      rr(x - w / 2 + 4, y - 7, Math.max(4, w - 8), 4, 2); R.ctx.fill();
+      R.ctx.fillStyle = '#3f6b3a';
+      var bar = Math.min(3, Math.max(1, Math.round(w / 26)));
+      for (var b = 0; b < bar; b++) {
+        var bx = x - w / 2 + 8 + b * 16;
+        rr(bx, y - 3, 9, 11, 3); R.ctx.fill();
+        R.ctx.fillStyle = '#5c8a4a'; rr(bx + 1.5, y + 2, 6, 4, 2); R.ctx.fill();
+        R.ctx.fillStyle = '#3f6b3a';
+      }
+      return;
+    }
+
+    // Неоновая платформа: тёмная плита со светящейся кромкой
+    if (kind === 'neon') {
+      shadow(x, y + 6, w * 0.5, 8, 0.30);
+      R.ctx.fillStyle = '#1c2030';
+      rr(x - w / 2, y - 10, w, 20, 5); R.ctx.fill();
+      R.ctx.fillStyle = '#2b3450';
+      rr(x - w / 2 + 2, y - 8, w - 4, 14, 4); R.ctx.fill();
+      var pulse = 0.55 + 0.45 * Math.sin(G.t * 3 + x * 0.02);
+      R.ctx.fillStyle = 'rgba(0,255,240,' + pulse.toFixed(2) + ')';
+      rr(x - w / 2, y - 10, w, 3, 1.5); R.ctx.fill();
+      R.ctx.fillStyle = 'rgba(255,0,200,' + (1 - pulse * 0.5).toFixed(2) + ')';
+      rr(x - w / 2, y + 7, w, 3, 1.5); R.ctx.fill();
+      return;
+    }
+
+    // Катер: корпус, рубка, иллюминаторы
+    if (kind === 'boat') {
+      shadow(x, y + 7, w * 0.5, 9, 0.26);
+      R.ctx.fillStyle = '#d9dee4';
+      R.ctx.beginPath();
+      R.ctx.moveTo(x - w / 2, y - 6);
+      R.ctx.lineTo(x + w / 2, y - 8);
+      R.ctx.lineTo(x + w / 2 - 4, y + 10);
+      R.ctx.lineTo(x - w / 2 + 4, y + 10);
+      R.ctx.closePath(); R.ctx.fill();
+      R.ctx.fillStyle = '#2b4a6e';
+      rr(x - w / 2 + 3, y + 4, w - 6, 4, 2); R.ctx.fill();
+      R.ctx.fillStyle = '#eef3f8';
+      rr(x - w * 0.18, y - 12, Math.max(12, w * 0.36), 12, 4); R.ctx.fill();
+      R.ctx.fillStyle = '#6fb7e8';
+      rr(x - w * 0.12, y - 9, Math.max(6, w * 0.24), 6, 2); R.ctx.fill();
+      R.ctx.fillStyle = '#e0574a';
+      rr(x + w * 0.12, y - 18, 3, 8, 1); R.ctx.fill();
+      return;
+    }
     // Камень в лаве: плоская плита, на ней можно стоять
     if (kind === 'stone') {
       R.ctx.fillStyle = 'rgba(0,0,0,0.25)';

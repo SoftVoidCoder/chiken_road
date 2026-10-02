@@ -17,20 +17,19 @@
   var diff = U.diff, colX = U.colX, rowY = U.rowY;
   var TH = CC.themes, A = CC.actors, MECH = CC.mech;
 
-  // Пул машин биома: неизвестные движку id превращаются в обычную машину.
+  // Пул машин карты: у каждой карты свой транспорт. Неизвестные движку id
+  // превращаются в обычную машину, поэтому опечатка не ломает поток.
+  // Раньше пул карты подмешивался к общему, и на всех картах ехало одно и то же.
   function themeCars() {
     var th = TH.get(G.themeId);
     var pool = th && th.cars && th.cars.length ? th.cars : null;
-    // Общий пул + машины биома: раньше пул биома заменял общий, и новые модели
-    // (пожарная, лимузин, болид, дрон) не попадали в поток вообще.
-    var out = CAR_POOL.slice();
-    if (pool) {
-      for (var i = 0; i < pool.length; i++) {
-        var id = KIND[pool[i]] ? pool[i] : 'car';
-        out.push(id, id);          // машины биома встречаются чаще остальных
-      }
+    if (!pool) { return CAR_POOL.slice(); }
+    var out = [];
+    for (var i = 0; i < pool.length; i++) {
+      var id = KIND[pool[i]] ? pool[i] : 'car';
+      if (out.indexOf(id) < 0) { out.push(id); }
     }
-    return out.length ? out : null;
+    return out.length ? out : CAR_POOL.slice();
   }
   /* ==========================================================================
      6. ГЕНЕРАЦИЯ МИРА
@@ -171,9 +170,16 @@
       len: function () { return 1.8 + wrnd() * 1.4; },
       minGap: 1.35 * diff().gap, gapTime: 0.95 * diff().gap, gapTighten: 0.05 * diff().ramp
     });
+    // Плавучая опора зависит от карты: в городе брёвна и лилии, на зимней
+    // карте льдины, на стройке понтоны, в киберпанке неоновые платформы,
+    // в аэропорту катера. Раньше везде было одно и то же бревно.
+    var th = CC.themes ? CC.themes.get(G.themeId) : null;
+    var mainKind = (th && th.waterMain) || 'log';
+    var altKind = (th && th.waterAlt) || 'lily';
     for (var i = 0; i < lane.items.length; i++) {
-      lane.items[i].kind = wrnd() < 0.78 ? 'log' : 'lily';
+      lane.items[i].kind = wrnd() < 0.8 ? mainKind : altKind;
       if (lane.items[i].kind === 'lily') { lane.items[i].len = Math.max(1.5, lane.items[i].len - 0.4); }
+      if (lane.items[i].kind === 'boat') { lane.items[i].len = Math.max(2.0, lane.items[i].len * 0.9); }
     }
     row.dir = lane.dir; row.items = lane.items; row.loop = lane.loop; row.speed = lane.speed;
     return row;

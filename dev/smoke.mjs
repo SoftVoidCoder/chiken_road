@@ -169,6 +169,7 @@ function step(title, fn) {
 
   const G = sandbox.window.__CHICKEN__;
   const CC_SETTINGS = sandbox.window.CC.settings;
+  const PLATFORM = sandbox.window.CC.platform;
   assert(!!G, 'движок не выставил __CHICKEN__');
 
   step('кадры идут в состоянии загрузки/меню', () => {
@@ -500,19 +501,19 @@ function step(title, fn) {
     G.setDiff('normal');
   });
 
-  step('экран карт: 25 биомов, открыты только первые', () => {
+  step('экран карт: пять биомов, открыты только первые', () => {
     releaseAll();
     G.toMenu();
     const themes = G.themes();
-    assert(themes.length === 25, 'ожидалось 25 биомов, найдено ' + themes.length);
+    assert(themes.length === 5, 'ожидалось 5 биомов, найдено ' + themes.length);
     assert(G.theme() === 'meadow', 'стартовый биом не meadow: ' + G.theme());
     // лестница открытия проверяется на чистом прогрессе: предыдущие шаги
     // успели набегать ряды, поэтому обнуляем счётчик и возвращаем обратно
     const savedRows = G.meta().stats.rows;
     G.meta().stats.rows = 0;
     assert(G.themeUnlocked('meadow') && G.themeUnlocked('winter'), 'первые две карты должны быть открыты сразу');
-    assert(!G.themeUnlocked('asia'), 'дальняя карта не должна быть открыта с нуля');
-    assert(G.setTheme('asia') !== 'asia', 'закрытую карту выбрать нельзя');
+    assert(!G.themeUnlocked('airport'), 'дальняя карта не должна быть открыта с нуля');
+    assert(G.setTheme('airport') !== 'airport', 'закрытую карту выбрать нельзя');
     assert(G.setTheme('winter') === 'winter', 'открытая карта не выбралась');
     assert(G.theme() === 'winter', 'биом не переключился');
     G.meta().stats.rows = savedRows;
@@ -532,13 +533,11 @@ function step(title, fn) {
       for (const k of Object.keys(rows)) { if (fn(rows[k])) { found++; } }
       return found;
     };
+    // Проверяем механики тех карт, что остались в игре
     assert(probe('winter', (r) => r.ice) > 0, 'зима: лёд не появился ни на одном ряду');
-    assert(probe('volcano', (r) => r.lava) > 0, 'вулкан: лава не появилась');
     assert(probe('cyberpunk', (r) => r.laser) > 0, 'киберпанк: лазерные ворота не появились');
     assert(probe('construction', (r) => r.crane) > 0, 'стройка: краны не появились');
-    assert(probe('subway', (r) => r.escalator) > 0, 'метро: эскалаторы не появились');
-    assert(probe('autumn', (r) => r.mud) > 0, 'осень: грязь не появилась');
-    assert(probe('canyon', (r) => r.holes) > 0, 'каньон: провалы не появились');
+    assert(probe('construction', (r) => r.holes) > 0, 'стройка: котлованы не появились');
     G.meta().stats.rows = saved;
     G.setTheme('meadow');
   });
@@ -735,7 +734,7 @@ function step(title, fn) {
     assert(listeners.byId.ovMenu.classList.contains('on'), 'Back не вернул в меню');
   });
 
-  step('все 25 биомов играются без ошибок', () => {
+  step('все карты играются без ошибок', () => {
     releaseAll();
     const saved = G.meta().stats.rows;
     G.meta().stats.rows = 100000;
@@ -761,11 +760,11 @@ function step(title, fn) {
     console.log('       биомов: ' + biomes + ', смертей в прогоне: ' + deaths + ', лучший ряд: ' + bestRow);
   });
 
-  step('мета-прогрессия: задания, достижения, сундук, сезон', () => {
+  step('мета-прогрессия: задания, достижения, сундук, уровень', () => {
     const q = G.quests();
     assert(q.daily.length === 3, 'должно быть 3 задания дня, есть ' + q.daily.length);
     assert(q.weekly.length === 2, 'должно быть 2 задания недели, есть ' + q.weekly.length);
-    assert(G.achievements().length >= 20, 'мало достижений: ' + G.achievements().length);
+    assert(G.achievements().length >= 19, 'мало достижений: ' + G.achievements().length);
     const lvl = G.levelInfo();
     assert(lvl.level >= 1 && lvl.rank, 'нет уровня или ранга');
     const chest = G.chest();
@@ -774,7 +773,7 @@ function step(title, fn) {
     assert(got && got.coins > 0, 'сундук не выдал награду');
     assert(G.chest().canClaim === false, 'сундук выдаётся дважды за день');
     const pass = G.pass();
-    assert(pass.rows.length === 30, 'в сезоне должно быть 30 уровней');
+    assert(pass.level >= 1 && pass.rows.length === 30, 'сезонный уровень сломан');
     // забег двигает задания и статистику
     const before = G.meta().stats.runs;
     releaseAll();
@@ -785,6 +784,35 @@ function step(title, fn) {
     G.die('car');
     tick(90);
     assert(G.meta().stats.runs > before, 'забег не засчитан в статистику: ' + G.meta().stats.runs);
+  });
+
+  step('у каждой карты свой транспорт и свои плавучие опоры', () => {
+    const seen = {};
+    const kinds = new Set();
+    const water = new Set();
+    for (const id of G.themes()) {
+      const th = sandbox.window.CC.themes.get(id);
+      assert(th.cars && th.cars.length >= 4, 'у карты ' + id + ' слишком мало машин: ' + (th.cars || []).length);
+      assert(th.waterMain, 'у карты ' + id + ' не задана плавучая опора');
+      const key = th.cars.slice().sort().join(',');
+      assert(!seen[key], 'у карт ' + seen[key] + ' и ' + id + ' одинаковый транспорт');
+      seen[key] = id;
+      th.cars.forEach((k) => kinds.add(k));
+      water.add(th.waterMain);
+    }
+    assert(water.size >= 4, 'плавучие опоры почти не различаются: ' + [...water].join(', '));
+    ['mixer', 'roller', 'lift', 'hover'].forEach((k) => {
+      assert(kinds.has(k), 'новый транспорт ' + k + ' никому не назначен');
+    });
+    // каждая машина из пулов карт должна уметь рисоваться
+    releaseAll();
+    for (const id of G.themes()) {
+      const th = sandbox.window.CC.themes.get(id);
+      for (const k of th.cars) {
+        assert(G.carPreview(k, 64, 64) !== null, 'модель ' + k + ' не рисуется');
+      }
+    }
+    console.log('       транспорт карт: ' + [...kinds].join(', '));
   });
 
   step('экран скинов открывается из меню и из паузы', () => {
@@ -818,6 +846,60 @@ function step(title, fn) {
     }
     key('ArrowUp', true);
     console.log('       кадров: ' + frames + ', смертей в прогоне: ' + deaths + ', рекорд: ' + G.G.best);
+  });
+
+  // Проверка переводов: любая надпись интерфейса обязана иметь строку в обоих
+  // языках. Раньше непереведённые ключи (например ach_runs50) попадали прямо
+  // в интерфейс — игрок видел код вместо текста.
+  step('все надписи интерфейса переведены на оба языка', () => {
+    const langs = ['ru', 'en'];
+    const keys = new Set();
+    const screens = { MODES: G.modes() };
+    // режимы, карты, бусты, задания, достижения
+    screens.MODES.forEach((m) => { keys.add(m.name); keys.add(m.desc); });
+    G.themes().forEach((id) => keys.add('th_' + id));
+    G.boosts().forEach((b) => { keys.add(b.name); keys.add(b.desc); });
+    const q = G.quests();
+    [...q.daily, ...q.weekly].forEach((item) => keys.add('q_' + item.type));
+    G.achievements().forEach((a) => { keys.add('ach_' + a.id); keys.add('ach_' + a.id + '_d'); });
+    ['diffEasy', 'diffNormal', 'diffHard',
+     'diffEasyHint', 'diffNormalHint', 'diffHardHint'].forEach((k) => keys.add(k));
+    ['q_progress', 'q_claim', 'q_claimed', 'q_done', 'boosts', 'shop', 'coins',
+     'notEnough', 'bought', 'use', 'stock', 'watch_ad', 'soon', 'store_local_note',
+     'st_min', 'st_inter', 'credits', 'mode_now', 'mode_on', 'mode_already',
+     'mode_applies', 'feedback', 'leaders'].forEach((k) => keys.add(k));
+    const bad = [];
+    langs.forEach((lang) => {
+      PLATFORM.lang = lang;
+      keys.forEach((k) => {
+        const val = PLATFORM.t(k, { n: 1, s: 'X', b: 'X', d: 'X' });
+        if (!val || val === k) { bad.push(lang + ':' + k); }
+      });
+    });
+    PLATFORM.lang = 'ru';
+    assert(bad.length === 0, 'нет перевода: ' + bad.join(', '));
+    console.log('       проверено строк: ' + keys.size + ' × ' + langs.length + ' языка');
+  });
+
+  step('выбранный режим сохраняется в профиль', () => {
+    G.setMode('water');
+    const saved = G.profile();
+    assert(saved.mode === 'water', 'режим не попал в профиль: ' + saved.mode);
+    // и восстанавливается при следующей загрузке
+    G.G.modeId = 'classic';
+    G.applyProfile(saved);
+    assert(G.G.modeId === 'water', 'режим не восстановился: ' + G.G.modeId);
+    G.setMode('classic');
+  });
+
+  step('раздел «Сезон» убран из интерфейса', () => {
+    assert(!listeners.byId.btnMenuPass, 'кнопка сезона осталась в меню');
+    assert(!listeners.byId.ovPass, 'экран сезона остался в разметке');
+    assert(G.openScreen('pass') === 'pass', 'вызов экрана сломан');
+    assert(!listeners.byId.ovPass || !listeners.byId.ovPass.classList.contains('on'), 'экран сезона всё ещё открывается');
+    assert(G.modes().length === 6, 'список режимов поехал: ' + G.modes().length);
+    G.closeScreens();
+    assert(G.modes().length === 6, 'список режимов поехал: ' + G.modes().length);
   });
 
   step('сохранение рекорда в localStorage', () => {

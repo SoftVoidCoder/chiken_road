@@ -47,14 +47,13 @@
     { id: 'eagle',      check: function (s) { return (s.reasons.eagle || 0) >= 1; } },
     { id: 'deaths',     check: function (s) { return countKeys(s.reasons) >= 5; } },
     { id: 'biomes5',    check: function (s) { return countKeys(s.biomes) >= 5; } },
-    { id: 'biomes_all', check: function (s) { return countKeys(s.biomes) >= 25; } },
+    { id: 'biomes_all', check: function (s, g) { return countKeys(s.biomes) >= ((g && g.biomeCount) || 5); } },
     { id: 'skins5',     check: function (s, g) { return g.skins.length >= 5; } },
     { id: 'hard50',     check: function (s) { return (s.bestHard || 0) >= 50; } },
     { id: 'daily7',     check: function (s) { return (s.streak || 0) >= 7; } },
     { id: 'combo50',    check: function (s) { return s.comboBest >= 50; } },
     { id: 'boost',      check: function (s) { return s.boosts >= 1; } },
     { id: 'pet',        check: function (s, g) { return !!(g.pet && g.pet !== 'none'); } },
-    { id: 'pass10',     check: function (s, g) { return (g.passLevel || 1) >= 10; } },
     { id: 'allmodes',   check: function (s) { return countKeys(s.modes) >= 6; } },
     { id: 'ghost',      check: function (s) { return !!s.ghostBeaten; } },
     { id: 'runs50',     check: function (s) { return s.runs >= 50; } }
@@ -278,7 +277,12 @@
         var id = ACH[i].id;
         if (M.state.ach[id]) { continue; }
         var ok = false;
-        try { ok = ACH[i].check(M.state.stats, { skins: CC.G.skins, pet: CC.G.pet, passLevel: M.state.pass.level }); } catch (e) { ok = false; }
+        try {
+          ok = ACH[i].check(M.state.stats, {
+            skins: CC.G.skins, pet: CC.G.pet, passLevel: M.state.pass.level,
+            biomeCount: (CC.themes && CC.themes.list.length) || 5
+          });
+        } catch (e) { ok = false; }
         if (ok) { M.state.ach[id] = 1; fresh.push(id); }
       }
       return fresh;

@@ -151,6 +151,9 @@
     G.tutorialDone = !!data.tutorialDone;
     if (CC.platform) { CC.platform.adsDisabled = G.adsDisabled; }
     UI.setDiff(DIFFS[data.diff] ? data.diff : 'normal', true);
+    // Выбранный режим забега тоже переживает перезапуск: раньше он сбрасывался
+    // в «классику», и казалось, что переключатель режимов не работает.
+    if (data.mode && CC.screens && CC.screens.modeById) { G.modeId = CC.screens.modeById(data.mode).id; }
     UI.syncHUD(true);
     UI.refreshSkins();
   }
@@ -186,6 +189,35 @@
       return cv;
     },
     kinds: function () { return Object.keys(C.KIND); },
+    // что реально едет по дорогам и плывёт по воде прямо сейчас
+    traffic: function () {
+      var cars = {}, water = {}, rows = G.rows;
+      for (var r in rows) {
+        if (!rows.hasOwnProperty(r)) { continue; }
+        var row = rows[r];
+        if (row.type === 'road' && row.items) {
+          for (var i = 0; i < row.items.length; i++) {
+            var k = row.items[i].kind; cars[k] = (cars[k] || 0) + 1;
+          }
+        }
+        if (row.type === 'water' && row.items) {
+          for (var j = 0; j < row.items.length; j++) {
+            var w = row.items[j].kind; water[w] = (water[w] || 0) + 1;
+          }
+        }
+      }
+      return { cars: cars, water: water };
+    },
+    weather: function () {
+      var st = CC.mech && CC.mech.state ? CC.mech.state() : null;
+      if (!st || !st.weather || !st.weather.length) { return { n: 0 }; }
+      var xs = [], ys = [];
+      for (var i = 0; i < st.weather.length; i++) { xs.push(st.weather[i].x); ys.push(st.weather[i].y); }
+      return { n: st.weather.length,
+        x: [Math.round(Math.min.apply(null, xs)), Math.round(Math.max.apply(null, xs))],
+        y: [Math.round(Math.min.apply(null, ys)), Math.round(Math.max.apply(null, ys))],
+        screen: [R.VW, R.VH] };
+    },
 
     /* бусты и режимы */
     boost: function (id) { return GM.activateBoost(id); },
@@ -194,6 +226,7 @@
     combo: function () { return { combo: G.combo, best: G.comboBest }; },
     mode: function () { return G.modeId; },
     setMode: function (id) { G.modeId = id; return G.modeId; },
+    applyProfile: function (data) { applyProfile(data || {}); return G.modeId; },
     daily: function (on) { G.daily = !!on; return G.daily; },
     night: function () { return G.night; },
 
@@ -206,6 +239,8 @@
 
     /* биомы */
     themes: function () { return TH.ids(); },
+    boosts: function () { return SK.boosts; },
+    modes: function () { return CC.screens.MODES; },
     theme: function () { return G.themeId; },
     setTheme: function (id) { return UI.setTheme(id); },
     themeUnlocked: function (id) { return TH.isUnlocked(id, META.stats().rows); },

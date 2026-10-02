@@ -38,9 +38,17 @@ fetch "https://kenney.nl/media/pages/assets/ui-audio/490d233f68-1677590494/kenne
 fetch "https://opengameart.org/sites/default/files/coin_sounds.zip"                                                 oga-coins.zip
 fetch "https://opengameart.org/sites/default/files/water-splash-slime-sfx.zip"                                      oga-water.zip
 fetch "https://opengameart.org/sites/default/files/SoundPack01.zip"                                                 oga-soundpack01.zip
-fetch "https://opengameart.org/sites/default/files/bicycle-horn-1.wav"                                              oga-bicycle-horn.wav
 fetch "https://opengameart.org/sites/default/files/8-Bit%20Car%20Game%20Sound%20Effects.zip"                        oga-car8.zip
-fetch "https://opengameart.org/sites/default/files/5%20Action%20Chiptunes%20By%20Juhani%20Junkala.zip"              oga-chiptunes.zip
+fetch "https://kenney.nl/media/pages/assets/music-jingles/f37e530b9e-1677590399/kenney_music-jingles.zip"            kenney-jingles.zip
+# Фоновая музыка — спокойная «кафешная»: босса-нова, lo-fi и лёгкий джаз.
+# Все треки CC0, поэтому дополнительных обязательств у игры не появляется.
+fetch "https://opengameart.org/sites/default/files/Buy%20Something%20Full%21.mp3"                                   music-menu.mp3
+fetch "https://opengameart.org/sites/default/files/ChillLofi.ogg"                                                   music-chill.ogg
+fetch "https://opengameart.org/sites/default/files/lofihiphop.ogg"                                                  music-lofi.ogg
+fetch "https://opengameart.org/sites/default/files/apple_cider.ogg"                                                 music-cider.ogg
+fetch "https://opengameart.org/sites/default/files/013_Another_August.mp3"                                          music-august.mp3
+# Гудок автомобиля — настоящий сигнал вместо игрушечного велосипедного
+fetch "https://opengameart.org/sites/default/files/car2.wav"                                                        oga-car-horn.wav
 
 unpack kenney-interface.zip k-interface
 unpack kenney-impact.zip    k-impact
@@ -50,7 +58,7 @@ unpack oga-coins.zip        oga-coins
 unpack oga-water.zip        oga-water
 unpack oga-soundpack01.zip  oga-sp01
 unpack oga-car8.zip         oga-car8
-unpack oga-chiptunes.zip    oga-music
+unpack kenney-jingles.zip   k-jingles
 
 # --- помощники ---------------------------------------------------------------
 peak_db() { # пиковый уровень файла в дБFS
@@ -70,21 +78,27 @@ sfx() {
 }
 
 # music <вход> <выход> [целевой пик дБ]
-music() {
-  local in="$1" out="$2" target="${3:--1.5}" peak gain
+music() { # <вход> <выход> [целевой пик дБ] [доп. фильтры]
+  local in="$1" out="$2" target="${3:--1.5}" extra="${4:-}" peak gain af
   peak="$(peak_db "$in")"
   [ -z "$peak" ] && peak=0
   gain="$(python3 -c "print(round($target - ($peak), 2))")"
-  ffmpeg -v error -y -i "$in" -af "volume=${gain}dB" -ac 2 -ar 44100 -c:a libvorbis -q:a 2 "$MUS/$out"
+  af="volume=${gain}dB"
+  [ -n "$extra" ] && af="$extra,$af"
+  # Фон играет тихо, поэтому хватает ~80 кбит/с: архив остаётся лёгким
+  ffmpeg -v error -y -i "$in" -af "$af" -ac 2 -ar 44100 -c:a libvorbis -q:a 1 "$MUS/$out"
 }
 
 echo "Собираю эффекты…"
-sfx "$SRC/k-digital/Audio/pepSound3.ogg"                 hop.ogg
-sfx "$SRC/k-impact/Audio/impactWood_light_000.ogg"       land.ogg
+# Прыжок — короткий деревянный «тук», приземление — мягкий удар.
+# Раньше здесь был синтезаторный блип с переливом: на каждом шаге он звучал
+# как невнятное «кукареканье».
+sfx "$SRC/k-impact/Audio/impactWood_light_001.ogg"       hop.ogg -3
+sfx "$SRC/k-impact/Audio/impactSoft_medium_001.ogg"      land.ogg -2
 sfx "$SRC/oga-coins/coin1.wav"                           coin.ogg
-sfx "$SRC/oga-car8/WAV/Accident.wav"                     crash.ogg -1.5 "atrim=0:2.2,afade=t=out:st=1.7:d=0.5"
+sfx "$SRC/oga-car8/WAV/Accident.wav"                     crash.ogg -1.5 "atrim=0:1.6,afade=t=out:st=1.15:d=0.45"
 sfx "$SRC/oga-water/splash_02.ogg"                       splash.ogg
-sfx "$SRC/oga-bicycle-horn.wav"                          horn.ogg -3
+sfx "$SRC/oga-car-horn.wav"                              horn.ogg -3 "atrim=0:1.3,afade=t=out:st=1.05:d=0.25"
 sfx "$SRC/oga-car8/WAV/Active Brake.wav"                 brake.ogg -2
 sfx "$SRC/k-digital/Audio/lowDown.ogg"                   sink.ogg
 sfx "$SRC/k-ui/Audio/click1.ogg"                         click.ogg -3
@@ -95,16 +109,19 @@ sfx "$SRC/k-interface/Audio/error_004.ogg"               error.ogg -2
 sfx "$SRC/k-digital/Audio/powerUp5.ogg"                  boost.ogg -2
 sfx "$SRC/k-interface/Audio/confirmation_001.ogg"        buy.ogg
 sfx "$SRC/k-impact/Audio/impactGlass_light_001.ogg"      shield.ogg
-sfx "$SRC/k-digital/Audio/highUp.ogg"                    record.ogg
-sfx "$SRC/oga-sp01/Rise01.aif"                           levelup.ogg -1
-sfx "$SRC/oga-sp01/Downer01.aif"                         gameover.ogg -1
+# Фанфары и проигрыш: короткие 8-битные джинглы из набора Kenney Music Jingles
+sfx "$SRC/k-jingles/Audio/8-Bit jingles/jingles_NES12.ogg" record.ogg -2
+sfx "$SRC/k-jingles/Audio/8-Bit jingles/jingles_NES09.ogg" levelup.ogg -2
+sfx "$SRC/k-jingles/Audio/8-Bit jingles/jingles_NES11.ogg" gameover.ogg -2
 
 echo "Собираю музыку…"
-music "$SRC/oga-music/Juhani Junkala [Retro Game Music Pack] Title Screen.wav" menu.ogg
-music "$SRC/oga-music/Juhani Junkala [Retro Game Music Pack] Level 1.wav"      game1.ogg
-music "$SRC/oga-music/Juhani Junkala [Retro Game Music Pack] Level 2.wav"      game2.ogg
-music "$SRC/oga-music/Juhani Junkala [Retro Game Music Pack] Level 3.wav"      game3.ogg
-music "$SRC/oga-music/Juhani Junkala [Retro Game Music Pack] Ending.wav"       over.ogg
+# меню — босса-нова (автор подтверждает зацикливание), забеги — lo-fi,
+# экран итогов — спокойный эмбиент, обрезанный до двух минут с затуханием
+music "$SRC/music-menu.mp3"   menu.ogg
+music "$SRC/music-chill.ogg"  game1.ogg
+music "$SRC/music-lofi.ogg"   game2.ogg
+music "$SRC/music-cider.ogg"  game3.ogg
+music "$SRC/music-august.mp3" over.ogg -1.5 "atrim=0:120,afade=t=out:st=116:d=4"
 
 echo
 echo "Готово. Размер банка:"

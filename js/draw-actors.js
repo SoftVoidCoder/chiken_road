@@ -1177,6 +1177,138 @@
   }
 
   /* --- мусоровоз ------------------------------------------------------------ */
+
+  /* --- транспорт отдельных карт --------------------------------------------
+     Стройка: бетономешалка, каток и вышка-подъёмник.
+     Киберпанк: парящая машина с неоновой подсветкой. */
+  function drawMixer(len, base) {
+    var hw = CAR_W / 2 + 3, x0 = -len / 2, x1 = len / 2, i;
+    vWheel(x0 + 13, -hw + 1, 10, true);
+    vWheel(x0 + 13, hw - 1, 10, true);
+    vWheel(x1 - 15, -hw + 1, 9, true);
+    vWheel(x1 - 15, hw - 1, 9, true);
+    // рама и бак с водой
+    R.ctx.fillStyle = '#3a4450';
+    rr(x0, -hw * 0.72, len, hw * 1.44, 3); R.ctx.fill();
+    vBody(Math.max(20, len * 0.34), hw, base, 5);
+    R.ctx.save();
+    R.ctx.translate(x1 - len * 0.32, 0);
+    R.ctx.fillStyle = '#2f3a46';
+    R.ctx.fillRect(-len * 0.15 - 2, -hw * 0.9, 4, hw * 1.8);
+    R.ctx.restore();
+    // вращающийся барабан: наклонные полосы бегут по кругу
+    var cx = -len * 0.12, rx = len * 0.30, ry = hw * 0.78;
+    R.ctx.fillStyle = '#e8e2d4';
+    R.ctx.beginPath(); R.ctx.ellipse(cx, 0, rx, ry, 0, 0, 6.2832); R.ctx.fill();
+    R.ctx.strokeStyle = 'rgba(30,36,46,0.45)'; R.ctx.lineWidth = 1.4; R.ctx.stroke();
+    R.ctx.save();
+    R.ctx.beginPath(); R.ctx.ellipse(cx, 0, rx, ry, 0, 0, 6.2832); R.ctx.clip();
+    R.ctx.fillStyle = base;
+    for (i = 0; i < 5; i++) {
+      var off = ((G.t * 26 + i * (rx * 0.55)) % (rx * 2.6)) - rx * 1.3;
+      R.ctx.save();
+      R.ctx.translate(cx + off, 0);
+      R.ctx.rotate(0.35);
+      R.ctx.fillRect(-2.6, -ry, 5.2, ry * 2);
+      R.ctx.restore();
+    }
+    R.ctx.fillStyle = 'rgba(255,255,255,0.22)';
+    R.ctx.beginPath(); R.ctx.ellipse(cx - rx * 0.3, -ry * 0.4, rx * 0.5, ry * 0.25, -0.3, 0, 6.2832); R.ctx.fill();
+    R.ctx.restore();
+    R.ctx.fillStyle = '#c8ccd2';
+    R.ctx.beginPath(); R.ctx.ellipse(cx - rx, 0, 3.4, ry * 0.9, 0, 0, 6.2832); R.ctx.fill();
+    // кабина
+    var xc0 = x1 - len * 0.26;
+    vGlassQuad([x1 - 3, -hw * 0.86, x1 - 3, hw * 0.86, xc0 + 2, hw * 0.94, xc0 + 2, -hw * 0.94]);
+    vSeam(xc0, hw);
+    vHead(x1 - 1, hw, false);
+  }
+
+  function drawRoller(len, base) {
+    var hw = CAR_W / 2 + 1, x0 = -len / 2, x1 = len / 2;
+    // задние колёса и большой стальной валец впереди
+    vWheel(x0 + 14, -hw + 2, 11, true);
+    vWheel(x0 + 14, hw - 2, 11, true);
+    R.ctx.fillStyle = '#8b929c';
+    rr(x1 - 15, -hw - 1, 15, hw * 2 + 2, 6); R.ctx.fill();
+    R.ctx.fillStyle = '#a8b0bb';
+    rr(x1 - 13, -hw + 1, 11, hw * 2 - 2, 5); R.ctx.fill();
+    R.ctx.fillStyle = 'rgba(255,255,255,0.28)';
+    rr(x1 - 12, -hw + 2.5, 9, 3, 1.5); R.ctx.fill();
+    // рама и кабина
+    R.ctx.fillStyle = '#3f4854';
+    rr(x0, -hw * 0.66, len * 0.86, hw * 1.32, 3); R.ctx.fill();
+    vBody(len * 0.5, hw * 0.92, base, 5);
+    vGlassQuad([x1 - len * 0.34, -hw * 0.84, x1 - len * 0.34, hw * 0.84,
+                x0 + len * 0.3, hw * 0.9, x0 + len * 0.3, -hw * 0.9]);
+    // проблесковый маячок
+    var blink = Math.sin(G.t * 7) > 0;
+    R.ctx.fillStyle = blink ? '#ffd75e' : '#c9a13a';
+    rr(-len * 0.02, -3, 5, 6, 2); R.ctx.fill();
+  }
+
+  function drawLift(len, base) {
+    var hw = CAR_W / 2 + 2, x0 = -len / 2, x1 = len / 2;
+    vWheel(x0 + 12, -hw + 1, 9, true);
+    vWheel(x0 + 12, hw - 1, 9, true);
+    vWheel(x1 - 14, -hw + 1, 9, true);
+    vWheel(x1 - 14, hw - 1, 9, true);
+    vBody(len * 0.8, hw, base, 5);
+    vGlassQuad([x1 - 3, -hw * 0.84, x1 - 3, hw * 0.84, x1 - len * 0.3, hw * 0.9, x1 - len * 0.3, -hw * 0.9]);
+    // поднятая стрела с корзиной: плавно покачивается
+    var swing = Math.sin(G.t * 1.6) * 2.2;
+    R.ctx.save();
+    R.ctx.translate(x0 + len * 0.34, 0);
+    R.ctx.rotate(-0.5 + swing * 0.012);
+    R.ctx.fillStyle = '#e8b23c';
+    rr(-4, -3, len * 0.62, 6, 3); R.ctx.fill();
+    R.ctx.fillStyle = '#f0c95e';
+    rr(-4, -3, len * 0.62, 2.4, 1.2); R.ctx.fill();
+    R.ctx.translate(len * 0.58, 0);
+    R.ctx.fillStyle = '#d9a52f';
+    rr(-9, -9, 18, 18, 3); R.ctx.fill();
+    R.ctx.fillStyle = 'rgba(40,48,60,0.6)';
+    rr(-7, -7, 14, 14, 2); R.ctx.fill();
+    R.ctx.restore();
+  }
+
+  function drawHover(len, base) {
+    var hw = CAR_W / 2 - 1, x0 = -len / 2, x1 = len / 2;
+    // светящееся поле под корпусом вместо колёс
+    var glow = R.ctx.createLinearGradient(0, hw, 0, hw + 12);
+    glow.addColorStop(0, 'rgba(120,240,255,0.55)');
+    glow.addColorStop(1, 'rgba(120,240,255,0)');
+    R.ctx.fillStyle = glow;
+    rr(x0 + 3, hw - 1, len - 6, 12, 6); R.ctx.fill();
+    R.ctx.fillStyle = 'rgba(255,80,200,0.35)';
+    rr(x0 + 6, -hw - 4, len - 12, 5, 2.5); R.ctx.fill();
+    // обтекаемый корпус
+    R.ctx.beginPath();
+    R.ctx.moveTo(x0 + 2, -hw * 0.5);
+    R.ctx.lineTo(x0 + len * 0.3, -hw);
+    R.ctx.lineTo(x1 - len * 0.22, -hw);
+    R.ctx.lineTo(x1, 0);
+    R.ctx.lineTo(x1 - len * 0.22, hw);
+    R.ctx.lineTo(x0 + len * 0.3, hw);
+    R.ctx.lineTo(x0 + 2, hw * 0.5);
+    R.ctx.closePath();
+    var g = R.ctx.createLinearGradient(0, -hw, 0, hw);
+    g.addColorStop(0, shade(base, 0.4));
+    g.addColorStop(0.5, base);
+    g.addColorStop(1, shade(base, -0.5));
+    R.ctx.fillStyle = g; R.ctx.fill();
+    R.ctx.strokeStyle = 'rgba(12,16,26,0.55)'; R.ctx.lineWidth = 1.1; R.ctx.stroke();
+    // фонарь-полоса и кабина
+    R.ctx.fillStyle = 'rgba(20,26,40,0.9)';
+    rr(x1 - len * 0.42, -hw * 0.72, len * 0.3, hw * 1.44, 4); R.ctx.fill();
+    R.ctx.fillStyle = 'rgba(150,240,255,0.75)';
+    rr(x1 - len * 0.4, -hw * 0.6, len * 0.26, 2.2, 1); R.ctx.fill();
+    R.ctx.fillStyle = '#ff4fd0';
+    rr(x0 + 4, -hw * 0.8, 3.4, hw * 1.6, 1.6); R.ctx.fill();
+    R.ctx.fillStyle = 'rgba(200,255,255,0.85)';
+    rr(x1 - 3.5, -hw * 0.5, 3, hw, 1.4); R.ctx.fill();
+  }
+
   function drawGarbage(len, base) {
     var hw = CAR_W / 2 + 2, x0 = -len / 2, x1 = len / 2, i;
     vWheel(x0 + 12, -hw + 0.5, 9, true);
@@ -1856,6 +1988,18 @@
     } else if (kind === 'garbage') {
       vShadowBox(len, CAR_W + 4);
       drawGarbage(len, base);
+    } else if (kind === 'mixer') {
+      vShadowBox(len, CAR_W + 6);
+      drawMixer(len, base);
+    } else if (kind === 'roller') {
+      vShadowBox(len, CAR_W + 4);
+      drawRoller(len, base);
+    } else if (kind === 'lift') {
+      vShadowBox(len, CAR_W + 4);
+      drawLift(len, base);
+    } else if (kind === 'hover') {
+      vShadowBox(len, CAR_W + 2);
+      drawHover(len, base);
     } else if (kind === 'tow') {
       vShadowBox(len, CAR_W + 3);
       drawTow(len, base);
@@ -2124,7 +2268,8 @@
      Модели с анимацией (мигалки полиции и скорой, наклон мотоцикла) остаются
      живыми — их немного, и они дешёвые. */
   var LIVE_KINDS = { police: 1, ambulance: 1, moto: 1, snowplow: 1, firetruck: 1,
-    garbage: 1, tow: 1, drone: 1, plane: 1, limo: 1 };
+    garbage: 1, tow: 1, drone: 1, plane: 1, limo: 1,
+    mixer: 1, roller: 1, lift: 1, hover: 1 };
 
   function vehicleSprite(kind, color, dir) {
     var spec = KIND[kind] || KIND.car;

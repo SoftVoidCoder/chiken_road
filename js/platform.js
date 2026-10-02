@@ -75,6 +75,7 @@
       watch_ad: 'За рекламу', boost_on: 'Включено: {s}', soon: 'Недоступно', stock: 'Запас',
       store_local_note: 'Витрина и реклама работают внутри Яндекс Игр',
       st_min: 'мин', st_inter: 'Межстраничная реклама',
+      credits: 'Звук и музыка: Kenney, Juhani Junkala, Snabisch, rubberduck, wobbleboxx, AntumDeluge · иконки Lucide',
       sk_classic: 'Классика', sk_chick: 'Цыплёнок', sk_bandit: 'Разбойник', sk_ninja: 'Ниндзя',
       sk_zombie: 'Зомби', sk_robot: 'Робот', sk_gold: 'Золотая', sk_rainbow: 'Радуга',
 
@@ -106,6 +107,7 @@
       quest_daily: 'Задания дня', quest_weekly: 'Задания недели',
       q_progress: 'Прогресс', q_claim: 'Забрать', q_claimed: 'Получено', q_done: 'Готово',
       q_reset: 'Обновление через', q_rows: 'Пройди {n} рядов за один забег',
+      q_rows_single: 'Пройди {n} рядов за один забег', q_nostop: 'Пройди {n} рядов без остановок',
       q_rows_total: 'Пройди {n} рядов всего', q_coins: 'Собери {n} монет',
       q_coins_total: 'Собери {n} монет всего', q_runs: 'Сыграй {n} забегов',
       q_biome: 'Поиграй в биоме «{b}»', q_diff: 'Сыграй забег на сложности «{d}»',
@@ -128,9 +130,9 @@
       ach_combo50: 'Без остановок', ach_combo50_d: 'Доведи комбо до 50',
       ach_boost: 'Со способностями', ach_boost_d: 'Используй буст',
       ach_pet: 'Не один', ach_pet_d: 'Заведи питомца',
-      ach_pass: 'Сезонный', ach_pass_d: 'Пройди 10 уровней сезона',
       ach_allmodes: 'Всеядный', ach_allmodes_d: 'Поиграй во всех режимах',
       ach_ghost: 'Быстрее себя', ach_ghost_d: 'Побей собственный рекорд',
+      ach_runs50: 'Ветеран', ach_runs50_d: 'Сыграй 50 забегов',
 
       /* статистика */
       st_runs: 'Забегов', st_rows: 'Рядов всего', st_best: 'Лучший забег', st_coins: 'Монет собрано',
@@ -163,6 +165,8 @@
       daily_used: 'Сегодня уже пройдено', daily_best: 'Лучший результат дня',
       ghost: 'Личный рекорд',
       combo: 'Комбо', weather: 'Погода', mode: 'Режим', biome: 'Биом',
+      mode_now: 'Выбран режим: {s}', mode_on: 'Режим выбран: {s}', mode_already: 'Этот режим уже включён: {s}',
+      mode_applies: 'Применится в следующем забеге.',
       mode_classic: 'Классика', mode_water: 'Только вода', mode_rails: 'Только рельсы',
       mode_nostop: 'Без остановок', mode_night: 'Ночь', mode_extreme: 'Экстрим',
       mode_classic_d: 'Обычные правила: дороги, реки, рельсы и трава.',
@@ -216,6 +220,7 @@
       watch_ad: 'Watch ad', boost_on: 'On: {s}', soon: 'Unavailable', stock: 'In stock',
       store_local_note: 'Store and ads work inside Yandex Games',
       st_min: 'min', st_inter: 'Interstitial ads',
+      credits: 'Audio: Kenney, Juhani Junkala, Snabisch, rubberduck, wobbleboxx, AntumDeluge · icons Lucide',
       sk_classic: 'Classic', sk_chick: 'Chick', sk_bandit: 'Bandit', sk_ninja: 'Ninja',
       sk_zombie: 'Zombie', sk_robot: 'Robot', sk_gold: 'Golden', sk_rainbow: 'Rainbow',
 
@@ -244,6 +249,7 @@
       quest_daily: 'Daily quests', quest_weekly: 'Weekly quests',
       q_progress: 'Progress', q_claim: 'Claim', q_claimed: 'Claimed', q_done: 'Done',
       q_reset: 'Resets in', q_rows: 'Pass {n} rows in one run',
+      q_rows_single: 'Pass {n} rows in one run', q_nostop: 'Pass {n} rows without stopping',
       q_rows_total: 'Pass {n} rows in total', q_coins: 'Collect {n} coins',
       q_coins_total: 'Collect {n} coins in total', q_runs: 'Play {n} runs',
       q_biome: 'Play in the "{b}" biome', q_diff: 'Play a run on "{d}"',
@@ -266,9 +272,9 @@
       ach_combo50: 'Non-stop', ach_combo50_d: 'Reach a combo of 50',
       ach_boost: 'Powered up', ach_boost_d: 'Use a boost',
       ach_pet: 'Not alone', ach_pet_d: 'Get a pet',
-      ach_pass: 'Seasonal', ach_pass_d: 'Reach season level 10',
       ach_allmodes: 'Omnivore', ach_allmodes_d: 'Play every mode',
       ach_ghost: 'Faster than me', ach_ghost_d: 'Beat your own record',
+      ach_runs50: 'Veteran', ach_runs50_d: 'Play 50 runs',
 
       st_runs: 'Runs', st_rows: 'Rows total', st_best: 'Best run', st_coins: 'Coins collected',
       st_time: 'Time played', st_deaths: 'Deaths', st_biomes: 'Biomes unlocked', st_skins: 'Skins',
@@ -297,6 +303,8 @@
       daily_used: 'Already done today', daily_best: 'Best of the day',
       ghost: 'Personal best',
       combo: 'Combo', weather: 'Weather', mode: 'Mode', biome: 'Biome',
+      mode_now: 'Selected mode: {s}', mode_on: 'Mode selected: {s}', mode_already: 'Already active: {s}',
+      mode_applies: 'Applies to your next run.',
       mode_classic: 'Classic', mode_water: 'Water only', mode_rails: 'Rails only',
       mode_nostop: 'Non-stop', mode_night: 'Night', mode_extreme: 'Extreme',
       mode_classic_d: 'Regular rules: roads, rivers, rails and grass.',
@@ -747,6 +755,7 @@
         skins: parseList(ls('cc_skins')),
         skin: ls('cc_skin') || '',
         diff: ls('cc_diff') || '',
+        mode: ls('cc_mode') || '',
         pet: ls('cc_pet') || '', trail: ls('cc_trail') || '',
         hat: ls('cc_hat') || '', voice: ls('cc_voice') || '',
         owned: parseList(ls('cc_owned')),
@@ -822,6 +831,10 @@
       if (data.diff) {
         payload.diff = data.diff;
         ls('cc_diff', data.diff);
+      }
+      if (data.mode) {
+        payload.mode = data.mode;
+        ls('cc_mode', data.mode);
       }
       if (data.pet) { payload.pet = data.pet; ls('cc_pet', data.pet); }
       if (data.trail) { payload.trail = data.trail; ls('cc_trail', data.trail); }

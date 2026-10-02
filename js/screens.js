@@ -96,7 +96,7 @@
      Экраны: открытие и закрытие
      ========================================================================== */
   var SCREENS = {
-    modes: 'ovModes', quests: 'ovQuests', ach: 'ovAch', pass: 'ovPass',
+    modes: 'ovModes', quests: 'ovQuests', ach: 'ovAch',
     leaders: 'ovLeaders', store: 'ovStore', stats: 'ovStats', settings: 'ovSettings',
     skins: 'ovSkins', maps: 'ovThemes'
   };
@@ -121,7 +121,6 @@
     if (name === 'modes') { buildModes(); }
     else if (name === 'quests') { buildQuests(); }
     else if (name === 'ach') { buildAch(); }
-    else if (name === 'pass') { buildPass(); }
     else if (name === 'leaders') { buildLeaders(); }
     else if (name === 'store') { buildStore(); }
     else if (name === 'stats') { buildStats(); }
@@ -150,21 +149,38 @@
   function buildModes() {
     var box = clearBox('modeGrid');
     if (!box) { return; }
+    // Под заголовком всегда написано, какой режим выбран: раньше после нажатия
+    // ничего не менялось на вид, и казалось, что раздел не работает.
+    var cur = modeById(G.modeId);
+    var hint = $('tModesHint');
+    if (hint) {
+      hint.textContent = T('mode_now', { s: T(cur.name) }) + ' — ' + T(cur.desc) +
+        (cur.id === 'classic' ? '' : ' ' + T('mode_applies'));
+    }
     for (var i = 0; i < MODES.length; i++) {
       (function (m) {
-        var card = node('button', 'themecard' + (G.modeId === m.id ? ' sel' : ''));
+        var on = G.modeId === m.id;
+        var card = node('button', 'themecard' + (on ? ' sel' : ''));
         card.type = 'button';
         card.setAttribute('data-mode', m.id);
+        if (on) { card.setAttribute('aria-pressed', 'true'); }
         var mIcon = node('span', 'thc-icon');
         mIcon.appendChild(U.icon(m.icon));
         card.appendChild(mIcon);
         card.appendChild(node('span', 'thc-name', T(m.name)));
         card.appendChild(node('span', 'thc-tag', T(m.desc)));
+        if (on) {
+          var mark = node('span', 'thc-mark');
+          mark.appendChild(U.icon('i-check'));
+          card.appendChild(mark);
+        }
         card.addEventListener('click', function () {
+          var same = G.modeId === m.id;
           G.modeId = m.id;
           U.saveProfile();
           buildModes();
-          SND.hop();
+          SND.select();
+          toast(same ? T('mode_already', { s: T(m.name) }) : T('mode_on', { s: T(m.name) }));
         });
         box.appendChild(card);
       })(MODES[i]);
@@ -355,63 +371,6 @@
     }
   }
 
-  /* ==========================================================================
-     Сезонный пропуск
-     ========================================================================== */
-  function buildPass() {
-    var box = clearBox('passList');
-    var lvl = $('passLevel');
-    var info = META.passInfo();
-    if (lvl) { lvl.textContent = String(info.level); }
-    if (!box) { return; }
-    var free = 0, prem = 0;
-    for (var i = 0; i < info.rows.length; i++) {
-      var r = info.rows[i];
-      var ready = r.level <= info.level;
-      var premItem = r.premium ? T('reward_' + r.premium.item.kind, { s: T(slotNameKey(r.premium.item)) }) : '';
-      var title = T('pass_level') + ' ' + r.level + (ready ? ' — ' + T('q_done') : '');
-      // Награды строкой с переносами: значок монеты не должен вылезать за карточку
-      var sub = '<span class="pr">' + T('pass_free') + ': <b>+' + r.free.coins + '</b> ' +
-        U.iconHtml('i-coin') + '</span>' +
-        (r.premium ? '<span class="pr prem">' + T('pass_premium') + ': ' + premItem + '</span>' : '');
-      var canFree = ready && !r.free.claimed;
-      var canPrem = ready && r.premium && !r.premium.claimed && info.premium;
-      var btn = r.free.claimed ? T('q_claimed') : (canFree ? T('pass_claim') : T('pass_need', { n: r.level }));
-      var cls = canFree || canPrem ? 'gold' : 'off';
-      var lvlCopy = r.level;
-      var el2 = row(r.free.claimed && (!r.premium || r.premium.claimed) ? 'i-check' : 'i-ticket', title, markup('div', 'rs rewards', sub), btn, cls,
-        (canFree || canPrem) ? function () {
-          claimPassLevel(lvlCopy, canPrem && !canFree ? 'premium' : 'free');
-        } : null);
-      box.appendChild(el2);
-      if (ready && !r.free.claimed) { free++; }
-      if (ready && r.premium && !r.premium.claimed && info.premium) { prem++; }
-    }
-    var premiumBtn = $('btnPassPremium');
-    if (premiumBtn) {
-      premiumBtn.hidden = info.premium;
-      premiumBtn.textContent = T('pass_premium_buy');
-    }
-  }
-
-  function slotNameKey(item) {
-    return item.kind === 'coins' ? 'coins' : (item.kind + '_' + item.id);
-  }
-
-  function claimPassLevel(level, track) {
-    var got = META.claimPass(level, track);
-    if (!got) { toast(T('pass_need', { n: level })); return; }
-    if (got.kind === 'coins') {
-      UI.addCoins(got.n);
-      SND.coin();
-      toast(T('reward_coins', { n: got.n }));
-    } else {
-      grantCosmetic(got.kind, got.id);
-      toast(T('reward_' + got.kind, { s: T(got.kind + '_' + got.id) }));
-    }
-    U.saveProfile();
-    buildPass();
-  }
 
   // Выдача косметики из награды: предмет сразу становится надетым
   function grantCosmetic(kind, id) {
@@ -474,8 +433,7 @@
     { id: 'coins_500', icon: 'i-coin', name: 'bundle_1', desc: 'bundle_1_n', coins: 500 },
     { id: 'coins_1500', icon: 'i-banknote', name: 'bundle_2', desc: 'bundle_2_n', coins: 1500 },
     { id: 'coins_5000', icon: 'i-box', name: 'bundle_3', desc: 'bundle_3_n', coins: 5000 },
-    { id: 'no_ads', icon: 'i-ban', name: 'noAds', desc: 'adsOff', noAds: true },
-    { id: 'season_pass', icon: 'i-ticket', name: 'pass_premium_buy', desc: 'pass_premium', premium: true }
+    { id: 'no_ads', icon: 'i-ban', name: 'noAds', desc: 'adsOff', noAds: true }
   ];
 
   function buildStore() {
@@ -565,7 +523,7 @@
       ['i-coin', T('st_coins'), st.coins],
       ['i-clock', T('st_time'), mins + ' ' + T('st_min')],
       ['i-skull', T('st_deaths'), st.deaths],
-      ['i-map', T('st_biomes'), Object.keys(st.biomes).length + ' / 25'],
+      ['i-map', T('st_biomes'), Object.keys(st.biomes).length + ' / ' + TH.list.length],
       ['i-chicken', T('st_skins'), G.skins.length + ' / ' + SK.list.length],
       ['i-zap', T('st_boosts'), st.boosts || 0],
       ['i-flame', T('st_combo'), st.comboBest || 0],
@@ -884,9 +842,6 @@
     var chest = META.chestInfo();
     var dayDot = $('dailyDot');
     if (dayDot) { dayDot.hidden = !(chest.canClaim || !G.dailyPlayed); }
-    var pass = META.passInfo();
-    var passDot = $('passDot');
-    if (passDot) { passDot.hidden = pass.level <= 1; }
   }
 
   /* ==========================================================================
@@ -901,7 +856,6 @@
     bind('btnMenuModes', function () { open('modes'); });
     bind('btnMenuQuests', function () { open('quests'); });
     bind('btnMenuAch', function () { open('ach'); });
-    bind('btnMenuPass', function () { open('pass'); });
     bind('btnMenuLeaders', function () { open('leaders'); });
     bind('btnMenuStore', function () { open('store'); });
     bind('btnMenuStats', function () { open('stats'); });
@@ -911,14 +865,12 @@
     bind('btnModesClose', closeToMenu);
     bind('btnQuestsClose', closeToMenu);
     bind('btnAchClose', closeToMenu);
-    bind('btnPassClose', closeToMenu);
     bind('btnLeadersClose', closeToMenu);
     bind('btnStoreClose', closeToMenu);
     bind('btnStatsClose', closeToMenu);
     bind('btnSettingsClose', closeToMenu);
     bind('btnTutNext', nextTutStep);
     bind('btnStatsReset', resetProgress);
-    bind('btnPassPremium', function () { buyProduct(PRODUCTS[4]); });
     bind('btnRate', function () {
       Pl.requestReview(function (sent) { toast(sent ? T('rated') : T('purchaseFail')); });
     });

@@ -185,6 +185,10 @@
   .themecard:hover{background:#e4dfd2}
   .themecard:active{transform:scale(.97)}
   .themecard.sel{border-color:#57bb3a;background:#e7f6df}
+  /* отметка на выбранной карточке: видно, что именно включено */
+  .thc-mark{position:absolute;top:6px;right:7px;display:grid;place-items:center;width:18px;height:18px;
+    border-radius:9px;background:#57bb3a;color:#fff}
+  .thc-mark .ic{width:13px;height:13px;stroke-width:3}
   .themecard.locked{opacity:.72}
   .thc-icon{display:grid;place-items:center;width:38px;height:38px;border-radius:12px;margin-bottom:2px;
     background:rgba(29,43,63,.07);color:#42536e}
