@@ -82,6 +82,18 @@
         for (var k2 = 0; k2 < row.coins.length; k2++) {
           D.drawCoin(colX(row.coins[k2]), y - 3 + Math.sin(G.t * 3 + row.coins[k2]) * 1.5, row.coins[k2]);
         }
+        // скользкие клетки подсвечиваем, чтобы игрок понимал, где пронесёт
+        if (row.ice) {
+          for (var ic in row.ice) {
+            R.ctx.fillStyle = 'rgba(210,240,255,0.30)';
+            R.ctx.beginPath();
+            R.ctx.ellipse(colX(+ic), y, TS * 0.40, TS * 0.34, 0, 0, 6.2832);
+            R.ctx.fill();
+            R.ctx.strokeStyle = 'rgba(255,255,255,0.45)';
+            R.ctx.lineWidth = 1.4;
+            R.ctx.stroke();
+          }
+        }
         if (flooded) { D.drawFlood(y, 1); }
         if (row.holes) { for (var hp in row.holes) { D.drawPit(colX(+hp), y); } }
       } else if (row.type === 'road') {

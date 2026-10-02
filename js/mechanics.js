@@ -62,10 +62,11 @@
   function decorateRow(row, d) {
     var th = theme();
     var i;
-    // Лёд: часть клеток земли скользит
+    // Лёд: часть клеток земли скользит. Плотность умеренная: если льда
+    // слишком много, курица едет почти без участия игрока.
     if (has('ice') && row.type === 'grass') {
       for (i = 0; i < COLS; i++) {
-        if (hash01(row.r * 91 + i * 7) < 0.45) {
+        if (hash01(row.r * 91 + i * 7) < 0.32) {
           row.ice = row.ice || {};
           row.ice[i] = 1;
         }
@@ -295,11 +296,17 @@
     if (!row) { return; }
     var col = CC.util.playerCol();
 
-    // лёд: проскальзываем ещё на клетку в сторону движения
-    if (row.ice && row.ice[col] && pl.facing) {
+    // Лёд: проскальзываем ровно на одну клетку за шаг игрока.
+    // Флаг G.sliding не даёт скольжению сцепляться в цепочку: иначе на зимней
+    // карте курица ехала сама по себе, пока не упрётся в препятствие.
+    if (row.ice && row.ice[col] && pl.facing && !G.sliding) {
       var dir = { up: [0, 1], down: [0, -1], left: [-1, 0], right: [1, 0] }[pl.facing];
-      if (dir) { G.slide = { dc: dir[0], dr: dir[1] }; }
+      if (dir) {
+        G.slide = { dc: dir[0], dr: dir[1] };
+        G.iceHint = 0.35;
+      }
     }
+    G.sliding = false;
     // грязь: следующий прыжок медленнее
     if (row.mud && row.mud[col]) {
       G.mudSlow = 0.6;

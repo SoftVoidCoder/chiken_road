@@ -68,7 +68,8 @@
     G.ghostTrack = []; G.ghostNext = 0;
     if (MECH) { MECH.reset(); }
     if (W.resetSeed) { W.resetSeed(); }
-    G.slide = null; G.wind = null; G.tunnel = null; G.tunnelLock = false; G.mudSlow = 0;
+    G.slide = null; G.sliding = false; G.iceHint = 0; G.wind = null;
+    G.tunnel = null; G.tunnelLock = false; G.mudSlow = 0;
     G.combo = 0; G.comboBest = 0; G.boost = null; G.boostLeft = 0; G.shield = 0; G.boostLabel = '';
     G.night = 0; G.lastDc = 0; G.lastDr = 0;
     pl.px = colX((COLS - 1) / 2); pl.py = rowY(0);
@@ -337,6 +338,7 @@
       if (pl.alive && !pl.hop && G.slide) {
         var sl = G.slide;
         G.slide = null;
+        G.sliding = true;          // этот прыжок вызван льдом и больше не скользит
         tryMove(sl.dc, sl.dr);
       }
       // ветер: через мгновение сносит в сторону

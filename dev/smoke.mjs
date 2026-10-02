@@ -604,6 +604,41 @@ function step(title, fn) {
     G.daily(false);
   });
 
+  step('лёд скользит ровно на одну клетку за шаг', () => {
+    releaseAll();
+    const saved = G.meta().stats.rows;
+    G.meta().stats.rows = 100000;
+    G.setTheme('winter');
+    let checked = 0;
+    for (let attempt = 0; attempt < 25 && checked < 3; attempt++) {
+      G.start();
+      const rows = G.rows();
+      // ищем два ряда земли подряд и делаем их сплошным льдом
+      const base = Object.keys(rows).map(Number).find((r) => {
+        const a = rows[r], b = rows[r + 1];
+        return a && b && a.type === 'grass' && b.type === 'grass'
+          && !(6 in a.obstacles) && !(6 in b.obstacles)
+          && !a.coins.length && !b.coins.length;
+      });
+      if (base === undefined) { continue; }
+      const ice = {};
+      for (let c = 0; c < 13; c++) { ice[c] = 1; }
+      rows[base].ice = ice;
+      rows[base + 1].ice = ice;
+      G.teleport(6, base);
+      tick(3);
+      if (G.G.state !== 'playing' || !G.pl.alive) { continue; }
+      G.tryMove(0, 1);
+      tick(90);
+      const moved = G.G.maxRow - base;
+      assert(moved <= 2, 'на сплошном льду курица уехала на ' + moved + ' рядов вместо двух');
+      checked++;
+    }
+    assert(checked > 0, 'не удалось собрать сцену со льдом');
+    G.meta().stats.rows = saved;
+    G.setTheme('meadow');
+  });
+
   step('все 25 биомов играются без ошибок', () => {
     releaseAll();
     const saved = G.meta().stats.rows;
